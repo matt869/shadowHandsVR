@@ -1,0 +1,23 @@
+{
+  "_readme": "Do NOT replace your generated Packages/manifest.json with this file. Create the project in Unity Hub (Unity 6, 3D/URP or Built-in), then ADD the entries below. Easiest path instead: Window > Package Manager > My Assets > 'Meta XR All-in-One SDK' (free, Asset Store) > Install. That pulls Core + Interaction SDK + Simulator in one go.",
+
+  "scopedRegistries_add": [
+    {
+      "name": "Meta XR",
+      "url": "https://npm.developer.oculus.com/",
+      "scopes": [ "com.meta.xr" ]
+    }
+  ],
+
+  "dependencies_add": {
+    "com.meta.xr.sdk.all": "207.0.0",
+    "com.unity.textmeshpro": "3.0.9",
+    "com.unity.xr.management": "4.6.0"
+  },
+
+  "_notes": [
+    "com.meta.xr.sdk.all = Meta XR All-in-One (Core SDK + Interaction SDK + Voice + Simulator). v207 is the version the competition names.",
+    "If the scoped registry 404s on your Unity version, just use the Asset Store route above — same packages, same price (free).",
+    "After install: Meta > Tools > Project Setup Tool > 'Fix All' for Android. Then Meta > Tools > Building Blocks > add 'Camera Rig' and 'Hand Tracking'."
+  ]
+}
