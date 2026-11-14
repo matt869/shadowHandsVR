@@ -27,6 +27,11 @@ public class MatchMeterUI : MonoBehaviour
         if (holdRing) holdRing.fillAmount = t;
     }
 
+    public void SetTitle(string text)
+    {
+        if (levelName) levelName.text = text;
+    }
+
     public void SetHint(string text)
     {
         if (hint) hint.text = text;

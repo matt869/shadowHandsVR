@@ -7,6 +7,7 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.UI;
 
 /// <summary>
@@ -52,6 +53,11 @@ public static class ShadowHandsSetup
     [MenuItem("ShadowHands/Setup Everything (1-4)", priority = 0)]
     public static void SetupEverything()
     {
+        if (!EnsureTmp())
+        {
+            EditorUtility.DisplayDialog("Shadow Hands", "TextMeshPro resources were just imported. Run 'Setup Everything' once more.", "OK");
+            return;
+        }
         CreateLayers();
         CreateAssets();
         ConfigureUrpShadows();
@@ -123,6 +129,7 @@ public static class ShadowHandsSetup
     [MenuItem("ShadowHands/3. Configure URP Lamp Shadows", priority = 22)]
     public static void ConfigureUrpShadows()
     {
+        EnsureUrp();
         var assets = new HashSet<RenderPipelineAsset>();
         if (GraphicsSettings.defaultRenderPipeline) assets.Add(GraphicsSettings.defaultRenderPipeline);
         for (int i = 0; i < QualitySettings.names.Length; i++)
@@ -147,8 +154,41 @@ public static class ShadowHandsSetup
         AssetDatabase.SaveAssets();
     }
 
+    const string TmpFontPath = "Assets/TextMesh Pro/Resources/Fonts & Materials/LiberationSans SDF.asset";
+
+    /// <summary>TextMeshPro needs its "Essential Resources" (default font) imported once per project.
+    /// Returns false if it just imported them: Unity must reload before they can be used, so run again.</summary>
+    public static bool EnsureTmp()
+    {
+        if (File.Exists(TmpFontPath)) return true;
+        // ImportPackage needs a real file path, not the virtual "Packages/..." one.
+        var info = UnityEditor.PackageManager.PackageInfo.FindForAssetPath("Packages/com.unity.ugui");
+        if (info == null) { Debug.LogError("[ShadowHands] com.unity.ugui package not found"); return false; }
+        AssetDatabase.ImportPackage(Path.Combine(info.resolvedPath, "Package Resources", "TMP Essential Resources.unitypackage"), false);
+        AssetDatabase.Refresh();
+        Debug.Log("[ShadowHands] imported TextMeshPro essential resources");
+        return File.Exists(TmpFontPath);
+    }
+
+    /// <summary>If the project has no render pipeline asset (not created from the URP template), make one.</summary>
+    public static void EnsureUrp()
+    {
+        if (GraphicsSettings.defaultRenderPipeline) return;
+        Directory.CreateDirectory("Assets/Settings");
+        var renderer = ScriptableObject.CreateInstance<UniversalRendererData>();
+        AssetDatabase.CreateAsset(renderer, "Assets/Settings/ShadowHands_Renderer.asset");
+        var urp = UniversalRenderPipelineAsset.Create(renderer);
+        AssetDatabase.CreateAsset(urp, "Assets/Settings/ShadowHands_URP.asset");
+        GraphicsSettings.defaultRenderPipeline = urp;
+        QualitySettings.renderPipeline = urp;
+        AssetDatabase.SaveAssets();
+        Debug.Log("[ShadowHands] created URP pipeline asset");
+    }
+
     [MenuItem("ShadowHands/4. Build Stage In Open Scene", priority = 23)]
-    public static void BuildScene()
+    public static void BuildScene() => BuildStage(true);
+
+    public static void BuildStage(bool addToBuildSettings)
     {
         int wallL = LayerMask.NameToLayer("Wall"), overlayL = LayerMask.NameToLayer("Overlay");
         if (wallL < 0 || overlayL < 0 || LayerMask.NameToLayer("Hands") < 0) { CreateLayers(); wallL = LayerMask.NameToLayer("Wall"); overlayL = LayerMask.NameToLayer("Overlay"); }
@@ -198,8 +238,11 @@ public static class ShadowHandsSetup
         var cam = camGo.AddComponent<Camera>();
         cam.orthographic = true;
         cam.orthographicSize = FrameMeters / 2f;
-        cam.nearClipPlane = 0.45f;   // hug the wall: nothing but the wall surface is in frame
-        cam.farClipPlane = 0.6f;
+        // URP clamps shadow distance to the camera's far plane and fades shadows near it, so the far
+        // plane must be generous. (A wall-hugging 0.6 m far plane faded the hand shadows away.)
+        // Hands never show up in this image anyway: their proxies are ShadowsOnly.
+        cam.nearClipPlane = 0.05f;
+        cam.farClipPlane = 20f;
         cam.clearFlags = CameraClearFlags.SolidColor;
         cam.backgroundColor = Color.white;
         cam.cullingMask = LayerMask.GetMask("Wall", "Hands");
@@ -261,6 +304,13 @@ public static class ShadowHandsSetup
         var sfx = mgr.AddComponent<AudioSource>();
         sfx.playOnAwake = false;
         sfx.spatialBlend = 0f;
+        var toneGo = Child(mgr, "HoldTone", Vector3.zero);
+        var tone = toneGo.AddComponent<AudioSource>();
+        tone.clip = AssetDatabase.LoadAssetAtPath<AudioClip>($"{AudioDir}/hold_tone.wav");
+        tone.loop = true;
+        tone.playOnAwake = true;
+        tone.volume = 0f;
+        tone.spatialBlend = 0f;
         var hands = mgr.AddComponent<HandShadowCaster>();
         hands.sceneWide = true;
         hands.shadowProxyMaterial = wallMat;
@@ -273,6 +323,7 @@ public static class ShadowHandsSetup
         pm.goalOverlay = overlay;
         pm.payoffSpawnPoint = payoffSpawn.transform;
         pm.sfx = sfx;
+        pm.holdTone = tone;
         pm.matchChime = AssetDatabase.LoadAssetAtPath<AudioClip>($"{AudioDir}/match_chime.wav");
         pm.payoffSeconds = 4f;
         pm.levels = new List<SilhouetteLevel>();
@@ -291,6 +342,7 @@ public static class ShadowHandsSetup
         UnityEventTools.AddPersistentListener(pm.onLevelStart, new UnityAction<SilhouetteLevel>(ui.OnLevelStart));
         UnityEventTools.AddPersistentListener(pm.onLevelComplete, new UnityAction<SilhouetteLevel>(ui.OnLevelComplete));
         UnityEventTools.AddPersistentListener(pm.onHint, new UnityAction<string>(ui.SetHint));
+        UnityEventTools.AddPersistentListener(pm.onTitle, new UnityAction<string>(ui.SetTitle));
 
         // ---- save + build settings
         var scene = EditorSceneManager.GetActiveScene();
@@ -301,14 +353,17 @@ public static class ShadowHandsSetup
             EditorSceneManager.SaveScene(scene, ScenePath);
         }
         else EditorSceneManager.SaveScene(scene);
-        var path = scene.path;
-        var list = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
-        list.RemoveAll(s => s.path == path);
-        list.Insert(0, new EditorBuildSettingsScene(path, true));
-        EditorBuildSettings.scenes = list.ToArray();
+        if (addToBuildSettings)
+        {
+            var path = scene.path;
+            var list = new List<EditorBuildSettingsScene>(EditorBuildSettings.scenes);
+            list.RemoveAll(s => s.path == path);
+            list.Insert(0, new EditorBuildSettingsScene(path, true));
+            EditorBuildSettings.scenes = list.ToArray();
+        }
 
         Selection.activeGameObject = ui.gameObject;
-        Debug.Log("[ShadowHands] stage built. NEXT: right-click 'DeskCanvas' > Interaction SDK > Add Poke Interaction to Canvas (or use the Poke building block).");
+        Debug.Log("[ShadowHands] stage built. If you ran step 4 by hand, also add poke interaction to 'DeskCanvas' (ShadowHands > Build Quest Scene does it for you).");
     }
 
     [MenuItem("ShadowHands/Move Wall Closer (Glasses FOV)", priority = 40)]
@@ -345,14 +400,16 @@ public static class ShadowHandsSetup
             ti.wrapMode = TextureWrapMode.Clamp;
             ti.SaveAndReimport();
         }
-        var puff = (TextureImporter)AssetImporter.GetAtPath("Assets/Art/puff.png");
-        if (puff)
+        foreach (var (file, ppu2) in new[] { ("Assets/Art/puff.png", 64f), ("Assets/Art/white.png", 8f) })
         {
-            puff.textureType = TextureImporterType.Sprite;
-            puff.spritePixelsPerUnit = 64f;
-            puff.alphaIsTransparency = true;
-            puff.mipmapEnabled = false;
-            puff.SaveAndReimport();
+            var ti = (TextureImporter)AssetImporter.GetAtPath(file);
+            if (!ti) { Debug.LogError($"[ShadowHands] missing {file}; run Tools/generate_assets.py"); continue; }
+            ti.textureType = TextureImporterType.Sprite;
+            ti.spriteImportMode = SpriteImportMode.Single;   // default is Multiple-with-no-rects = no sprite at all
+            ti.spritePixelsPerUnit = ppu2;
+            ti.alphaIsTransparency = true;
+            ti.mipmapEnabled = false;
+            ti.SaveAndReimport();
         }
     }
 
@@ -393,8 +450,11 @@ public static class ShadowHandsSetup
 
         var uiSprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
         var knob = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/Knob.psd");
+        var white = AssetDatabase.LoadAssetAtPath<Sprite>("Assets/Art/white.png");
+        uiFont = AssetDatabase.LoadAssetAtPath<TMP_FontAsset>(TmpFontPath);
+        if (!uiFont) Debug.LogError("[ShadowHands] TextMeshPro font missing - UI text will be invisible. Run Setup Everything again.");
 
-        Img(cgo, "Background", new Vector2(0, 0), new Vector2(600, 400), new Color(0.08f, 0.08f, 0.1f, 0.85f), uiSprite);
+        Img(cgo, "Background", new Vector2(0, 0), new Vector2(600, 400), new Color(0.08f, 0.08f, 0.1f, 0.92f), uiSprite).type = Image.Type.Sliced;
 
         var ui = cgo.AddComponent<MatchMeterUI>();
         ui.levelName = Text(cgo, "LevelName", new Vector2(-60, 160), new Vector2(440, 60), 40, FontStyles.Bold);
@@ -402,8 +462,8 @@ public static class ShadowHandsSetup
         ui.hint = Text(cgo, "Hint", new Vector2(-60, 100), new Vector2(440, 70), 26, FontStyles.Normal);
         ui.hint.text = "";
 
-        Img(cgo, "MatchBarBg", new Vector2(-60, 35), new Vector2(440, 34), new Color(1, 1, 1, 0.15f), uiSprite);
-        ui.matchFill = Img(cgo, "MatchFill", new Vector2(-60, 35), new Vector2(440, 34), Color.white, uiSprite);
+        Img(cgo, "MatchBarBg", new Vector2(-60, 35), new Vector2(440, 34), new Color(1, 1, 1, 0.15f), white);
+        ui.matchFill = Img(cgo, "MatchFill", new Vector2(-60, 35), new Vector2(440, 34), Color.white, white);
         ui.matchFill.type = Image.Type.Filled;
         ui.matchFill.fillMethod = Image.FillMethod.Horizontal;
         ui.matchFill.fillAmount = 0f;
@@ -427,6 +487,8 @@ public static class ShadowHandsSetup
         recBtn.SetActive(false); // enable together with MaskRecorder when authoring masks
         return ui;
     }
+
+    static TMP_FontAsset uiFont;
 
     static GameObject Child(GameObject parent, string name, Vector3 localPos)
     {
@@ -458,6 +520,9 @@ public static class ShadowHandsSetup
         r.anchoredPosition = pos;
         r.sizeDelta = size;
         var t = go.AddComponent<TextMeshProUGUI>();
+        if (uiFont) t.font = uiFont;
+        t.textWrappingMode = TextWrappingModes.Normal;
+        t.overflowMode = TextOverflowModes.Truncate;   // the default TMP font has no ellipsis glyph
         t.fontSize = fontSize;
         t.fontStyle = style;
         t.alignment = TextAlignmentOptions.Left;
@@ -477,6 +542,10 @@ public static class ShadowHandsSetup
         UnityEventTools.AddPersistentListener(b.onClick, onClick);
         var t = Text(img.gameObject, "Label", Vector2.zero, new Vector2(125, 70), 26, FontStyles.Bold);
         t.alignment = TextAlignmentOptions.Center;
+        t.enableAutoSizing = true;      // "Recenter" must fit the same button as "Skip"
+        t.fontSizeMin = 14;
+        t.fontSizeMax = 26;
+        t.margin = new Vector4(8, 0, 8, 0);
         t.text = label;
         return img.gameObject;
     }

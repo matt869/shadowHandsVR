@@ -1,5 +1,29 @@
 # Changelog
 
+## 2026-11-14: running in Unity
+Verified by actually running it in Unity 6000.0.85f2 with Meta XR SDK 207.0.1 (headless editor, real URP rendering).
+
+### Fixed (bugs only running it could find)
+- **Hand shadows faded out of the scorer's view.** URP clamps shadow distance to the camera's far plane,
+  and WallCam's far plane hugged the wall (0.6 m). The score could never reach the lock threshold. This
+  would have broken scoring on the headset too.
+- PuzzleManager's UnityEvents were null when the component was added from code, so wiring them crashed.
+- All UI text was invisible: TextMeshPro's font resources were never imported. Setup now imports them.
+- Payoff puffs (fire, water, moon) didn't render: the sprite import mode produced no sprite.
+- Controller models under the camera rig were picked up as "hands" and would cast shadows. They're now excluded.
+- The default TMP font has no ellipsis glyph; text truncates instead.
+
+### Added
+- **More feedback:** the goal silhouette darkens as the match improves and pulses while held, and a tone
+  swells and rises in pitch during the hold.
+- **More to come back for:** a Daily Shadow streak, Story completion time, and a "3 / 10 Dog" level counter.
+- **Ships as a complete Unity project:** `Packages/manifest.json` pulls URP and Meta XR Core + Interaction 207.0.1.
+- **ShadowHands > Build Quest Scene (Building Blocks):** builds `Main.unity` with Camera Rig, Hand Tracking,
+  Interaction and Hand Poke blocks, adds ISDK poke to the desk UI, sets the Oculus XR loader, Hands Only and
+  Quest 3/3S, and runs Project Setup Tool *Fix All*.
+- **ShadowHands > Run Self-Test:** plays the whole game in the editor with a stand-in hand and real
+  shadows, and writes pass/fail results and screenshots. Currently 33/33 pass.
+
 ## 2026-11-14: polish pass
 - Skip and quitting mid-level now save Story progress. Before, relaunching returned you to the level you skipped.
 - The match chime plays first, then the level's sound and animation start 0.35 s later (`sfxDelay`).

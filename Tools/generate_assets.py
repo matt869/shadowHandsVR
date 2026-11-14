@@ -220,6 +220,7 @@ def write_images():
     puff[..., :3] = 255
     puff[..., 3] = (alpha * 255).astype(np.uint8)
     Image.fromarray(puff, "RGBA").save(os.path.join(ART, "puff.png"))
+    Image.new("RGBA", (8, 8), (255, 255, 255, 255)).save(os.path.join(ART, "white.png"))  # crisp UI bars
     return stats
 
 
@@ -283,6 +284,7 @@ def write_audio():
     os.makedirs(AUD, exist_ok=True)
     sounds = {
         "match_chime.wav": cat(bell(880, 0.25)[: int(SR * 0.12)], bell(1318.5, 0.9)),
+        "hold_tone.wav": np.sin(2 * np.pi * 330 * t_(1.0)) + 0.4 * np.sin(2 * np.pi * 660 * t_(1.0)) + 0.2 * np.sin(2 * np.pi * 495 * t_(1.0)),
         "sfx_bird.wav": cat(*[cat(sweep(2500, 4200, 0.07) * env(int(SR * 0.07), 0.005, 0.03), silence(0.05)) for _ in range(4)],
                             lowpass(noise(1.0, 1), 30) * np.linspace(0.6, 0, int(SR * 1.0)) * np.abs(np.sin(2 * np.pi * 9 * t_(1.0)))),
         "sfx_rabbit.wav": cat(*[cat(sweep(300, 700, 0.12) * env(int(SR * 0.12), 0.005, 0.06), silence(0.3)) for _ in range(4)]),

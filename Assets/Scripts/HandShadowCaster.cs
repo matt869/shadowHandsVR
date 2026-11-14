@@ -28,6 +28,8 @@ public class HandShadowCaster : MonoBehaviour
     public bool sceneWide = false;
     [Tooltip("Scene-wide mode: only meshes with an ancestor whose name contains this (case-insensitive)")]
     public string nameFilter = "hand";
+    [Tooltip("Scene-wide mode: skip meshes with an ancestor (or own name) containing this")]
+    public string excludeFilter = "controller";
 
     readonly Dictionary<SkinnedMeshRenderer, SkinnedMeshRenderer> proxies = new();
     float nextScan;
@@ -53,6 +55,8 @@ public class HandShadowCaster : MonoBehaviour
             if (proxies.ContainsKey(src) || proxies.ContainsValue(src)) continue;
             if (src.sharedMesh == null || src.name.EndsWith("_ShadowProxy")) continue;
             if (sceneWide && !HasAncestorNamed(src.transform, nameFilter)) continue;
+            // The camera rig also holds controller models (under "...HandAnchor"); only hands cast puppet shadows.
+            if (sceneWide && HasAncestorNamed(src.transform, excludeFilter)) continue;
 
             var go = new GameObject(src.name + "_ShadowProxy");
             go.transform.SetParent(src.transform.parent, false);

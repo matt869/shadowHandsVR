@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2683587227c3714296147b47f12ad3a, type: 3}
+  m_Name: Level_03_Dog
+  m_EditorClassIdentifier: 
+  displayName: Dog
+  mask: {fileID: 2800000, guid: be585cdd1324646468aca40d3a349936, type: 3}
+  goalOverlay: {fileID: 21300000, guid: bdf749e54e821e9409602d6db0521507, type: 3}
+  hint: Fingers forward, drop your pinky for the jaw, thumb up
+  lockThreshold: 0.65
+  payoffPrefab: {fileID: 7113034207278072242, guid: 3ef65c97c7e70fb4380a64735503098d, type: 3}
+  payoffSfx: {fileID: 8300000, guid: fb4db2b1a3582c343b0f2b28e3f227fb, type: 3}

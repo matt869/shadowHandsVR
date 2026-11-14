@@ -23,6 +23,8 @@ public class PuzzleManager : MonoBehaviour
     public Transform payoffSpawnPoint;      // on the wall
     public AudioSource sfx;
     public AudioClip matchChime;            // shared, plays on every lock
+    [Tooltip("Optional looping tone that swells and rises in pitch while the match is being held")]
+    public AudioSource holdTone;
 
     [Header("Levels")]
     public List<SilhouetteLevel> levels = new();
@@ -39,12 +41,13 @@ public class PuzzleManager : MonoBehaviour
     public float sfxDelay = 0.35f;
 
     [Header("Events (hook UI here)")]
-    public UnityEvent<float> onMatchProgress;   // 0..1 smoothed score / threshold
-    public UnityEvent<float> onHoldProgress;    // 0..1 hold timer
-    public UnityEvent<SilhouetteLevel> onLevelStart;
-    public UnityEvent<SilhouetteLevel> onLevelComplete;
-    public UnityEvent<string> onHint;           // tutorial / status prompts
-    public UnityEvent onAllComplete;
+    public UnityEvent<float> onMatchProgress = new();   // 0..1 smoothed score / threshold
+    public UnityEvent<float> onHoldProgress = new();    // 0..1 hold timer
+    public UnityEvent<SilhouetteLevel> onLevelStart = new();
+    public UnityEvent<SilhouetteLevel> onLevelComplete = new();
+    public UnityEvent<string> onHint = new();           // tutorial / status prompts
+    public UnityEvent<string> onTitle = new();          // e.g. "3 / 10   Dog"
+    public UnityEvent onAllComplete = new();
 
     public Mode mode = Mode.Story;
     public int CurrentIndex { get; private set; }
@@ -56,10 +59,31 @@ public class PuzzleManager : MonoBehaviour
     bool locked;
     Coroutine completing;
     int tutorialStep;
+    float overlayBaseAlpha = 0.25f;
+    float levelStartTime;
 
     const string ProgressKey = "shadowhands.story.index";
     const string DailyKey = "shadowhands.daily.done";
     const string TutorialKey = "shadowhands.tutorial.done";
+    const string StreakKey = "shadowhands.daily.streak";
+    const string StoryTimeKey = "shadowhands.story.seconds";
+
+    void Awake()
+    {
+        if (goalOverlay) overlayBaseAlpha = goalOverlay.color.a;
+        if (holdTone) holdTone.volume = 0f;
+    }
+
+    /// <summary>Consecutive days the Daily Shadow has been solved (0 if the chain is broken).</summary>
+    public int DailyStreak
+    {
+        get
+        {
+            string last = PlayerPrefs.GetString(DailyKey, "");
+            bool alive = last == TodayKey() || last == DateTime.Now.AddDays(-1).ToString("yyyy-MM-dd");
+            return alive ? PlayerPrefs.GetInt(StreakKey, 0) : 0;
+        }
+    }
 
     void OnEnable() { if (scorer) scorer.OnScore += HandleScore; }
     void OnDisable() { if (scorer) scorer.OnScore -= HandleScore; }
@@ -90,6 +114,7 @@ public class PuzzleManager : MonoBehaviour
         mode = Mode.Story;
         int saved = PlayerPrefs.GetInt(ProgressKey, 0);
         CurrentIndex = (saved >= 0 && saved < levels.Count) ? saved : 0; // finished -> start over
+        if (CurrentIndex == 0) PlayerPrefs.SetFloat(StoryTimeKey, 0f);
         LoadLevel(CurrentIndex);
     }
 
@@ -99,7 +124,7 @@ public class PuzzleManager : MonoBehaviour
         mode = Mode.Daily;
         CurrentIndex = DailyIndex(levels.Count);
         LoadLevel(CurrentIndex);
-        if (DailyDoneToday()) onHint?.Invoke("Already solved today. Play it again!");
+        if (DailyDoneToday()) onHint?.Invoke($"Solved today (streak: {DailyStreak}). Play it again!");
     }
 
     public void Skip()
@@ -114,6 +139,8 @@ public class PuzzleManager : MonoBehaviour
     {
         PlayerPrefs.DeleteKey(ProgressKey);
         PlayerPrefs.DeleteKey(TutorialKey);
+        PlayerPrefs.DeleteKey(DailyKey);
+        PlayerPrefs.DeleteKey(StreakKey);
         PlayerPrefs.Save();
         Start();
     }
@@ -138,6 +165,7 @@ public class PuzzleManager : MonoBehaviour
 
     void OnApplicationPause(bool paused)
     {
+        SetFeedback(0f, 0f);
         // Headset removed / put back on: drop partial hold so nothing locks while nobody is looking.
         holdTimer = 0f;
         smoothed = 0f;
@@ -178,7 +206,29 @@ public class PuzzleManager : MonoBehaviour
             goalOverlay.sprite = lvl.goalOverlay;
             goalOverlay.enabled = lvl.goalOverlay != null;
         }
+        levelStartTime = Time.time;
+        SetFeedback(0f, 0f);
         onLevelStart?.Invoke(lvl);
+        onTitle?.Invoke(mode == Mode.Story ? $"{CurrentIndex + 1} / {levels.Count}   {lvl.displayName}"
+                      : mode == Mode.Daily ? $"Daily Shadow   {lvl.displayName}"
+                      : lvl.displayName);
+    }
+
+    /// <summary>The target "stirs" as the match improves, and a tone swells while it is held.</summary>
+    void SetFeedback(float match01, float hold01)
+    {
+        if (goalOverlay)
+        {
+            var c = goalOverlay.color;
+            float pulse = hold01 > 0f ? 0.3f * Mathf.Sin(Time.time * 14f) * hold01 : 0f;
+            c.a = Mathf.Clamp01(overlayBaseAlpha * (1f + 0.8f * match01 * match01 + pulse));
+            goalOverlay.color = c;
+        }
+        if (holdTone)
+        {
+            holdTone.volume = 0.35f * hold01;
+            holdTone.pitch = 1f + 0.5f * hold01;
+        }
     }
 
     void HandleScore(float raw)
@@ -197,7 +247,9 @@ public class PuzzleManager : MonoBehaviour
         if (smoothed >= thr) holdTimer += dt;
         else holdTimer = Mathf.Max(0f, holdTimer - dt * 2f); // decay, forgiving
 
-        onHoldProgress?.Invoke(Mathf.Clamp01(holdTimer / holdSeconds));
+        float hold01 = Mathf.Clamp01(holdTimer / holdSeconds);
+        onHoldProgress?.Invoke(hold01);
+        SetFeedback(Mathf.Clamp01(smoothed / thr), hold01);
 
         if (mode == Mode.Tutorial) UpdateTutorialPrompt();
 
@@ -228,8 +280,17 @@ public class PuzzleManager : MonoBehaviour
         if (sfx && matchChime) sfx.PlayOneShot(matchChime);
         onLevelComplete?.Invoke(lvl);
 
-        if (mode == Mode.Daily) PlayerPrefs.SetString(DailyKey, TodayKey());
-        else if (mode == Mode.Story) PlayerPrefs.SetInt(ProgressKey, CurrentIndex + 1);
+        SetFeedback(0f, 0f);
+        if (mode == Mode.Daily)
+        {
+            if (!DailyDoneToday()) PlayerPrefs.SetInt(StreakKey, DailyStreak + 1); // DailyStreak is 0 if yesterday was missed
+            PlayerPrefs.SetString(DailyKey, TodayKey());
+        }
+        else if (mode == Mode.Story)
+        {
+            PlayerPrefs.SetInt(ProgressKey, CurrentIndex + 1);
+            PlayerPrefs.SetFloat(StoryTimeKey, PlayerPrefs.GetFloat(StoryTimeKey, 0f) + (Time.time - levelStartTime));
+        }
         PlayerPrefs.Save();
 
         // Chime first, then the shadow comes alive with its own sound.
@@ -243,7 +304,7 @@ public class PuzzleManager : MonoBehaviour
         CancelCompletion(); // clears the payoff
 
         if (mode == Mode.Tutorial) FinishTutorial();
-        else if (mode == Mode.Daily) { onHint?.Invoke("Daily Shadow solved! Come back tomorrow."); onAllComplete?.Invoke(); }
+        else if (mode == Mode.Daily) { onHint?.Invoke($"Daily Shadow solved! Streak: {DailyStreak} day{(DailyStreak == 1 ? "" : "s")}. Come back tomorrow."); onAllComplete?.Invoke(); }
         else Next();
     }
 
@@ -259,7 +320,9 @@ public class PuzzleManager : MonoBehaviour
         CurrentIndex++;
         if (CurrentIndex >= levels.Count)
         {
-            onHint?.Invoke("All shadows found! Try the Daily Shadow.");
+            int secs = Mathf.RoundToInt(PlayerPrefs.GetFloat(StoryTimeKey, 0f));
+            onTitle?.Invoke("The End");
+            onHint?.Invoke($"All {levels.Count} shadows found in {secs / 60}:{secs % 60:00}! Try the Daily Shadow.");
             onAllComplete?.Invoke();
             return;
         }

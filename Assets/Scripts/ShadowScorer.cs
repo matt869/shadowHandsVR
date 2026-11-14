@@ -15,8 +15,9 @@ using UnityEngine.Rendering.Universal;
 /// Notes / fixes vs. the original scaffold:
 ///   - Culling mask is Wall + Hands. A layer excluded by a camera's culling mask does not cast
 ///     shadows in that camera's render, so a Wall-only WallCam would never see hand shadows.
-///     Hands are drawn into WallCam ONLY as ShadowsOnly proxies (see HandShadowCaster), and the
-///     near/far clip hugs the wall, so no hand pixels end up in the image.
+///     Hands are drawn into WallCam ONLY as ShadowsOnly proxies (see HandShadowCaster), so no hand
+///     pixels end up in the image. Do NOT shrink the far clip plane to hug the wall: URP clamps
+///     shadow distance to it and the shadows fade out.
 ///   - Spot light falloff makes wall corners dim. A fixed brightness threshold would count dim corners
 ///     as "shadow" and wreck the IoU, so each pixel is compared to the brightest value it has ever
 ///     had (its "lit reference"). Shadow = pixel < reference * shadowRatio.
@@ -49,6 +50,7 @@ public class ShadowScorer : MonoBehaviour
     bool[] target;
     byte[] litRef;
     bool[] lastShadow;
+    byte[] lastRaw;
     bool pending;
     int frame;
 
@@ -58,6 +60,7 @@ public class ShadowScorer : MonoBehaviour
         rt.Create();
         litRef = new byte[resolution * resolution];
         lastShadow = new bool[resolution * resolution];
+        lastRaw = new byte[resolution * resolution];
 
         wallCam.targetTexture = rt;
         wallCam.enabled = false; // rendered manually
@@ -65,6 +68,8 @@ public class ShadowScorer : MonoBehaviour
         wallCam.backgroundColor = Color.white;
         int mask = LayerMask.GetMask(wallLayer, handsLayer);
         if (mask != 0) wallCam.cullingMask = mask;
+        // Shadow distance is clamped to the far plane (with a fade before it): keep it well past the wall.
+        if (wallCam.farClipPlane < 10f) wallCam.farClipPlane = 20f;
     }
 
     /// <summary>Set the goal silhouette. Dark pixels = silhouette. Texture must be Read/Write enabled.</summary>
@@ -123,6 +128,7 @@ public class ShadowScorer : MonoBehaviour
         for (int i = 0; i < n; i++)
         {
             byte p = data[i];
+            lastRaw[i] = p;
             if (p > litRef[i]) litRef[i] = p;
             int reference = litRef[i];
             if (reference < minLitLevel) { lastShadow[i] = false; continue; }
@@ -164,6 +170,15 @@ public class ShadowScorer : MonoBehaviour
             }
         }
         tex.SetPixels32(px);
+        tex.Apply();
+        return tex;
+    }
+
+    /// <summary>Debug: the raw WallCam brightness image (grey), and the learned lit reference.</summary>
+    public Texture2D CaptureRaw(bool reference = false)
+    {
+        var tex = new Texture2D(resolution, resolution, TextureFormat.R8, false);
+        tex.LoadRawTextureData(reference ? litRef : lastRaw);
         tex.Apply();
         return tex;
     }

@@ -1,0 +1,21 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: f2683587227c3714296147b47f12ad3a, type: 3}
+  m_Name: Level_09_Crab
+  m_EditorClassIdentifier: 
+  displayName: Crab
+  mask: {fileID: 2800000, guid: e44209696d903fb41befba26152b88c5, type: 3}
+  goalOverlay: {fileID: 21300000, guid: 1006c61b5b6781448817d47e4427f1e7, type: 3}
+  hint: 'Two hands: wrists together, fingers up as claws'
+  lockThreshold: 0.75
+  payoffPrefab: {fileID: 5723567045781704281, guid: 9346f8393b51c8f4fa8f5afc354309e0, type: 3}
+  payoffSfx: {fileID: 8300000, guid: ce8aafe2fc08d3a48b5a1590eb5b817a, type: 3}

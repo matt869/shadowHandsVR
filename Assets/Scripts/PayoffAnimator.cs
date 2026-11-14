@@ -27,7 +27,7 @@ public class PayoffAnimator : MonoBehaviour
         basePos = transform.localPosition;
         baseScale = transform.localScale;
         t0 = Time.time;
-        if (motion == Motion.Howl && puffSprite) Puff(new Vector3(0.3f, 0.3f, 0f), Vector3.zero, 0.16f, new Color(1f, 0.95f, 0.7f, 1f), duration, 0f);
+        if (motion == Motion.Howl && puffSprite) Puff(new Vector3(0.3f, 0.3f, 0f), Vector3.zero, 0.2f, new Color(1f, 0.72f, 0.1f, 1f), duration, 0f); // amber: a pale moon vanishes on the lit wall
     }
 
     void Update()
