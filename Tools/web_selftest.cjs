@@ -1,5 +1,6 @@
 // Headless end-to-end test of the WebXR build (docs/). Needs: npm i playwright && npx playwright install chromium
 //   node Tools/web_selftest.cjs          -> Builds/web_selftest/results.txt + screenshots
+//   SH_URL=https://matt869.github.io/shadowHandsVR/ node Tools/web_selftest.cjs   -> test the live site
 const http = require('http');
 const fs = require('fs');
 const path = require('path');
@@ -18,7 +19,8 @@ const server = http.createServer((req, res) => {
 });
 
 (async () => {
-  await new Promise((r) => server.listen(8765, '127.0.0.1', r));
+  const LIVE = process.env.SH_URL;
+  if (!LIVE) await new Promise((r) => server.listen(8765, '127.0.0.1', r));
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -27,7 +29,7 @@ const server = http.createServer((req, res) => {
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   let code = 1;
   try {
-    await page.goto('http://127.0.0.1:8765/index.html?selftest', { waitUntil: 'load' });
+    await page.goto(LIVE ? LIVE.replace(/\/?$/, '/') + 'index.html?selftest' : 'http://127.0.0.1:8765/index.html?selftest', { waitUntil: 'load' });
     await page.waitForFunction(() => window.__sh && window.__sh.ready, null, { timeout: 60000 });
     await page.screenshot({ path: path.join(OUT, '00_start.png') });
     await page.waitForFunction(() => window.__selftest && window.__selftest.done, null, { timeout: 600000, polling: 1000 });
@@ -44,6 +46,6 @@ const server = http.createServer((req, res) => {
     await page.screenshot({ path: path.join(OUT, 'error.png') }).catch(() => {});
   }
   await browser.close();
-  server.close();
+  if (!LIVE) server.close();
   process.exit(code);
 })();

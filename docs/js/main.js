@@ -188,7 +188,7 @@ renderer.domElement.addEventListener('click', (e) => {
   mouse.set((e.clientX / window.innerWidth) * 2 - 1, -(e.clientY / window.innerHeight) * 2 + 1);
   ray.setFromCamera(mouse, camera);
   const hit = ray.intersectObject(ui.mesh)[0];
-  if (hit && hit.uv) ui.clickUV(hit.uv, clock.elapsedTime);
+  if (hit && hit.uv) ui.clickUV(hit.uv, simNow);
 });
 document.addEventListener('visibilitychange', () => { if (document.hidden) game.pause(); });
 window.addEventListener('resize', () => {
@@ -201,8 +201,12 @@ window.addEventListener('resize', () => {
 const clock = new THREE.Clock();
 const tipTmp = [new THREE.Vector3(), new THREE.Vector3()];
 
-function frame() {
-  const dt = Math.min(clock.getDelta(), 0.1), now = clock.elapsedTime;
+let simNow = 0;
+/** One frame. fixedDt is only used for frame-by-frame recording (?demo); normal play passes nothing. */
+function frame(_time, _xrFrame, fixedDt) {
+  const dt = fixedDt !== undefined ? fixedDt : Math.min(clock.getDelta(), 0.1);
+  simNow += dt;
+  const now = simNow;
   for (const h of hands) h.update();
   ui.update(now, hands.map((h, i) => ({ i, pos: h.tracked ? h.pos('index-finger-tip', tipTmp[i]) : null })));
   game.tick(dt);
@@ -217,7 +221,8 @@ function frame() {
 
 // Test hooks (used by Tools/web_selftest.mjs). Harmless in normal play.
 const hooks = {};
-window.__sh = { THREE, renderer, scene, camera, stage, wall, lamp, scorer, game, hands, ui, handMat, hooks, recenter, masks, LAMP_POS, WALL_Z, FRAME };
+window.__sh = { THREE, renderer, scene, camera, stage, wall, lamp, scorer, game, hands, ui, handMat, hooks, recenter, masks, overlays, LAMP_POS, WALL_Z, FRAME,
+  step: (dt) => frame(0, null, dt) };
 
 async function main() {
   setStatus('Loading...');
@@ -228,6 +233,8 @@ async function main() {
   renderer.setAnimationLoop(frame);
   await setupVRButton();
   window.__sh.ready = true;
-  if (new URLSearchParams(location.search).has('selftest')) (await import('./selftest.js')).run(window.__sh);
+  const q = new URLSearchParams(location.search);
+  if (q.has('selftest')) (await import('./selftest.js')).run(window.__sh);
+  if (q.has('demo')) { renderer.setAnimationLoop(null); document.getElementById('hud').style.display = 'none'; window.__sh.demo = true; }
 }
 main().catch((e) => { console.error(e); setStatus('Error: ' + e.message); });
