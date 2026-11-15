@@ -5,27 +5,44 @@ real tracked hands, and match the silhouette on the wall. Hold the match and the
 Built for the Meta VR Start Developer Competition 2026 (Gaming track, New Experience). Fully offline,
 no controllers.
 
-## Status
+## Play it
 
-| Part | State |
-|---|---|
-| Unity project | Opens and compiles in **Unity 6000.0.85f2** with **Meta XR Core + Interaction SDK 207.0.1** (no errors) |
-| Quest scene `Assets/Scenes/Main.unity` | Built by script with Building Blocks (Camera Rig, Hand Tracking, Interaction, Hand Poke), poke-enabled desk UI, Hands Only, Quest 3/3S, Project Setup Tool *Fix All* applied |
-| Gameplay | **Self-test passes 33/33** in the editor with real rendering: all 10 levels + tutorial + Daily lock from a real cast shadow (IoU 0.92–0.95), wrong shapes don't unlock, Skip/progress/streak/pause-resume work |
-| On a Quest headset | **Not yet tested**: real hand tracking, comfort, 72 Hz and Glasses FOV need the device |
-| Silhouettes | Placeholders from `Tools/generate_assets.py`; replace with real-hand captures (`MaskRecorder`) |
+**https://matt869.github.io/shadowHandsVR/**: open it in the **Meta Quest Browser**, press **Enter VR**,
+and use your hands. No install, no controllers.
 
-## Quick start
+The game ships in two versions:
+
+| | **WebXR (the competition entry)** | Unity (Quest APK) |
+|---|---|---|
+| Where | [`docs/`](docs/), served by GitHub Pages | `Assets/`, Unity 6000.0.85f2 + Meta XR SDK 207.0.1 |
+| Runs on | Quest Browser, hand tracking via WebXR | Installed APK |
+| Needs the Meta Developer Dashboard | No | Yes (not available in every country) |
+| Automated test | `node Tools/web_selftest.cjs`: **all checks pass** | Editor self-test: **33/33 pass** |
+| Tested with real hands on a headset | **Not yet** | **Not yet** |
+
+Both versions play the same 10 levels, tutorial and Daily Shadow, with the same scoring: the real shadow on
+the wall compared to the target silhouette (IoU).
+
+## WebXR version (`docs/`)
+
+- Built with three.js 0.169.0. It's included in `docs/vendor/`, so the page loads nothing from other sites.
+- Hands: each hand-tracking joint becomes a solid capsule hand (bones, palm, forearm) that casts the shadow.
+- **Test without a headset:** `npm i playwright && npx playwright install chromium`, then
+  `node Tools/web_selftest.cjs`. It plays every level in headless Chrome with real shadows and writes
+  results and screenshots to `Builds/web_selftest/`.
+- **Publish:** in the GitHub repo, go to Settings → Pages → Build and deployment → *Deploy from a branch* →
+  `main` / `/docs` → Save.
+
+## Unity version (`Assets/`)
 
 1. Open this folder in Unity **6000.0.85f2** (Android Build Support installed). Packages, including the
    Meta SDK from Meta's registry, resolve automatically from `Packages/manifest.json`.
    `Assets/Scenes/Main.unity` is ready to build. To rebuild it: **ShadowHands > Build Quest Scene (Building Blocks)**.
-2. Build: **ShadowHands > Build APK**, or `powershell -ExecutionPolicy Bypass -File Tools/build.ps1`.
+2. Build: `bash Tools/build_release.sh` (release-signed, needs your key) or **ShadowHands > Build APK**.
 3. Test without a headset: **ShadowHands > Run Self-Test (no headset)**, or `bash Tools/selftest.sh`.
-   Results and screenshots go to `Builds/selftest/`.
 4. Optional, to regenerate art and audio: `python Tools/generate_assets.py` (needs Pillow and numpy).
 
-See [CHANGELOG.md](CHANGELOG.md) for what changed from the original scaffold and why.
+See [CHANGELOG.md](CHANGELOG.md) for what changed and why.
 
 ## Everything you need is free
 

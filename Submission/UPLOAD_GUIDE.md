@@ -1,4 +1,22 @@
-# Uploading Shadow Hands to the Meta Developer Dashboard
+# Submitting Shadow Hands
+
+## WebXR entry (no Meta Developer Dashboard needed)
+The competition accepts WebXR entries as a public link. This is the route when the Meta Developer
+Dashboard isn't available in your country.
+
+1. **Turn on GitHub Pages (one time):** github.com/matt869/shadowHandsVR → **Settings** → **Pages** →
+   *Build and deployment* → Source **Deploy from a branch** → Branch **main**, folder **/docs** → **Save**.
+2. Wait a minute or two, then open **https://matt869.github.io/shadowHandsVR/** in a browser. You should see
+   the lamp, wall and desk.
+3. If anyone has a Quest: open the same link in the **Meta Quest Browser**, press **Enter VR**, and play
+   the tutorial with your hands.
+4. Put the link in your Devpost submission (`Submission/devpost_form_draft.md`).
+
+You also need **Meta VR Start program** membership before submitting (see the competition rules).
+
+---
+
+# Uploading the Unity APK to the Meta Developer Dashboard (alternative)
 
 These steps need your Meta login. Meta renames dashboard buttons from time to time, so if a label
 doesn't match exactly, look for the closest one.

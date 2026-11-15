@@ -16,7 +16,7 @@ Make hand shadows on a lamp-lit wall. Match the silhouette and it comes alive. N
 
 *What it does.* You sit at a desk under a lamp. A silhouette appears on the wall — a rabbit, a wolf, a dragon. You shape your real hands until your cast shadow matches it. The closer you get, the more the shadow stirs; hold the match for a moment and it comes alive and plays out a short scene. Story mode is 10 puzzles, from one-hand animals to two-hand creatures, about ten minutes end-to-end. Daily Shadow gives everyone the same new puzzle each day.
 
-*How we built it.* Unity 6 with Meta XR Core and Interaction SDK v207, using Building Blocks for the camera rig, hand tracking and poke UI. The scoring is physical, not a gesture classifier. A spot light casts the tracked hand meshes onto a white wall, and a small orthographic camera reads the actual shadow back and computes intersection-over-union against the target mask. Any hand shape that casts the right shadow counts; there's no "correct" finger pose to memorize. Every level is checked by an automated in-editor test that casts real shadows and plays the game end to end: tutorial, all 10 levels, Daily mode, and pause/resume.
+*How we built it.* WebXR with three.js, playable straight from the Quest Browser with no install. Each hand-tracking joint becomes a solid capsule hand that casts the shadow (a native Unity 6 + Meta XR SDK v207 version is in the same repo). The scoring is physical, not a gesture classifier. A spot light casts the tracked hand meshes onto a white wall, and a small orthographic camera reads the actual shadow back and computes intersection-over-union against the target mask. Any hand shape that casts the right shadow counts; there's no "correct" finger pose to memorize. Every level is checked by an automated test that casts real shadows and plays the game end to end: tutorial, all 10 levels, Daily mode, and pause/resume.
 
 *Design choices.* Seated, everything within a two-foot radius, one scene that drops you straight into the first puzzle, fully offline with no third-party services, and hands only from start to finish. Hold-to-lock with decay keeps it forgiving for shaky tracking. The target darkens as you get closer and a tone rises while you hold, so you can feel the match without reading a number.
 
@@ -33,11 +33,10 @@ Hands are the entire input: the shadow of the tracked hand mesh is the controlle
 
 ## Pre-submit checklist (do Day 5, leave buffer)
 - [ ] Start program membership approved
-- [ ] APK uploaded to release channel named exactly **Competition** in Developer Dashboard
-- [ ] Invite URL generated and tested in a fresh account
+- [ ] WebXR entry: GitHub Pages enabled (Settings → Pages → main /docs) and https://matt869.github.io/shadowHandsVR/ opens and plays in the Quest Browser
+- [ ] Public link pasted into the Devpost form
 - [ ] Video < 3:00, public on YouTube/Vimeo, best 20 seconds FIRST, footage from headset or XR Simulator
 - [ ] Hands-only playthrough verified end-to-end (never paired a controller)
 - [ ] Cold-start timed on a headset (target < 15 s); pause/resume (headset off/on) tested on a headset
-- [ ] APK is RELEASE-signed (`apksigner verify --print-certs` must not say "Android Debug")
 - [ ] Build stays accessible through Dec 9 (don't touch the channel after deadline)
 - [ ] Submit before **Nov 18, 12:00 PM PST = Nov 19, 4:00 AM Manila**

@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-11-16: WebXR version (competition entry)
+The Meta Developer Dashboard isn't available in the Philippines, so the Unity APK can't be submitted
+from there. The competition also accepts WebXR entries as a public link, so the game now has a browser
+version in `docs/`, served by GitHub Pages.
+- Same 10 levels, tutorial, Daily Shadow + streak, hold-to-lock with decay, payoff animations and sounds.
+- Same physical scoring: an orthographic camera reads the real shadow on the wall and computes IoU, with
+  the per-pixel lit reference.
+- Hands come from WebXR hand-tracking joints, built into a solid capsule hand (bones, palm, forearm) that
+  casts the shadow.
+- Desk panel with four poke buttons, pressed by pushing an index fingertip through the panel (hands only).
+- three.js 0.169.0 is included in `docs/vendor/` (checksum-verified from npm), so there are no runtime
+  requests to other sites.
+- `Tools/web_selftest.cjs` plays the whole game in headless Chrome with real shadows. All checks pass:
+  tutorial, all 10 levels, Daily, Skip/progress, pause, wrong-shape rejection, and the capsule hand
+  casting a shadow from joint data.
+- Two three.js layer traps handled: shadow casters *and* lights are filtered by the viewing camera's
+  layers, and the XR eye cameras only render layer 0.
+
 ## 2026-11-15: ready to upload
 - **Release signing.** `bash Tools/build_release.sh` builds an APK signed with your own key, which the
   Meta dashboard requires (it rejects debug-signed builds). The key and its password stay in
