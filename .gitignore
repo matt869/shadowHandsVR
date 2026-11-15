@@ -17,3 +17,6 @@
 # Meta DevAgent bridge: holds a local access token + LAN IP; the SDK regenerates it
 /Assets/Resources/DevAgentSettings.asset
 /Assets/Resources/DevAgentSettings.asset.meta
+
+# Unity build temp
+/.utmp/

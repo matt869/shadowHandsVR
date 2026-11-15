@@ -1,5 +1,17 @@
 # Changelog
 
+## 2026-11-15: ready to upload
+- **Release signing.** `bash Tools/build_release.sh` builds an APK signed with your own key, which the
+  Meta dashboard requires (it rejects debug-signed builds). The key and its password stay in
+  `~/ShadowHands-signing/`, outside the repo; the build loads them from environment variables and
+  clears them from ProjectSettings afterwards.
+- **Removed Unity Analytics, In-App Purchasing and Unity Cloud services.** Unity had added them by
+  default. The competition requires no network calls and no third-party services. The APK shrank
+  from 72 MB to 66 MB, and the self-test still passes.
+- **Devpost draft:** removed claims that haven't been verified (headset/FOV test, cold-start time) and
+  filled every blank except Team.
+- **Added `Submission/UPLOAD_GUIDE.md`:** Developer Dashboard steps.
+
 ## 2026-11-14: running in Unity
 Verified by actually running it in Unity 6000.0.85f2 with Meta XR SDK 207.0.1 (headless editor, real URP rendering).
 
