@@ -21,11 +21,12 @@ const dayKey = (d = new Date()) => `${d.getFullYear()}-${String(d.getMonth() + 1
  * for holdSeconds -> payoff -> next level. Modes: tutorial (first launch), story, daily.
  */
 export class Game {
-  constructor(hooks, { holdSeconds = 1.25, smoothing = 0.2, payoffSeconds = 4, sfxDelay = 0.35 } = {}) {
+  constructor(hooks, { holdSeconds = 1.25, smoothTau = 0.12, payoffSeconds = 4, sfxDelay = 0.35, staleAfter = 1.5 } = {}) {
     this.h = hooks;
     this.levels = LEVELS;
     this.holdSeconds = holdSeconds;
-    this.smoothing = smoothing;
+    this.smoothTau = smoothTau;      // seconds: time-based, so slow shadow readbacks don't slow the meter
+    this.staleAfter = staleAfter;    // no reading for this long -> freeze the hold (neither grow nor decay)
     this.payoffSeconds = payoffSeconds;
     this.sfxDelay = sfxDelay;
     this.mode = 'story';
@@ -117,6 +118,7 @@ export class Game {
   /** Call every frame with elapsed seconds; drives the payoff timeline. */
   tick(dt) {
     this.clock += dt;
+    if (!this.locked && this.current) this._updateHold(dt);
     if (this.payoffAt >= 0 && this.clock >= this.payoffAt) {
       this.payoffAt = -1;
       this.h.payoff(this.current);
@@ -130,25 +132,37 @@ export class Game {
     }
   }
 
-  /** Called by the scorer with a raw IoU. coverage = fraction of the wall in shadow. */
+  /**
+   * Called by the scorer with a raw IoU whenever a shadow reading arrives (every 1-3 frames on a
+   * headset, slower on weak devices). coverage = fraction of the wall in shadow.
+   * Smoothing is time-based, so the meter feels the same at any reading rate.
+   */
   onScore(raw, coverage) {
     if (this.locked || !this.current) return;
     const now = this.clock;
-    const dt = this.lastScoreTime < 0 ? 0 : Math.min(now - this.lastScoreTime, 0.1);
+    const since = this.lastScoreTime < 0 ? 0 : now - this.lastScoreTime;
     this.lastScoreTime = now;
+    const a = since > 0 ? 1 - Math.exp(-since / this.smoothTau) : 0.3;
+    this.smoothed += (raw - this.smoothed) * a;
+    this.h.match(Math.min(1, this.smoothed / this.current.thr));
+    if (this.mode === 'tutorial' && this.tutorialStep === 0 && coverage > 0.02) {
+      this.tutorialStep = 1; this.h.hint("That's your shadow! Shape it into the bird");
+    }
+  }
 
-    this.smoothed += (raw - this.smoothed) * this.smoothing;
-    const thr = this.current.thr, match01 = Math.min(1, this.smoothed / thr);
-    this.h.match(match01);
-    if (this.smoothed >= thr) this.holdTimer += dt;
-    else this.holdTimer = Math.max(0, this.holdTimer - dt * 2);   // decay, forgiving
-    const hold01 = Math.min(1, this.holdTimer / this.holdSeconds);
+  /** Hold-to-lock runs on frame time (not on reading rate), with forgiving decay. */
+  _updateHold(dt) {
+    const fresh = this.lastScoreTime >= 0 && this.clock - this.lastScoreTime < this.staleAfter;
+    const thr = this.current.thr;
+    if (fresh) {
+      if (this.smoothed >= thr) this.holdTimer += dt;
+      else this.holdTimer = Math.max(0, this.holdTimer - dt * 2);   // decay, forgiving
+    }
+    const match01 = Math.min(1, this.smoothed / thr), hold01 = Math.min(1, this.holdTimer / this.holdSeconds);
     this.h.hold(hold01);
     this.h.feedback(match01, hold01);
-
-    if (this.mode === 'tutorial') {
-      if (this.tutorialStep === 0 && coverage > 0.02) { this.tutorialStep = 1; this.h.hint("That's your shadow! Shape it into the bird"); }
-      else if (this.tutorialStep === 1 && this.holdTimer > 0) { this.tutorialStep = 2; this.h.hint('Yes! Hold it still...'); }
+    if (this.mode === 'tutorial' && this.tutorialStep === 1 && this.holdTimer > 0) {
+      this.tutorialStep = 2; this.h.hint('Yes! Hold it still...');
     }
     if (this.holdTimer >= this.holdSeconds) this._complete();
   }

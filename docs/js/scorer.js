@@ -78,7 +78,7 @@ export class ShadowScorer {
       this._pending = true;
       r.readRenderTargetPixelsAsync(this.rt, 0, 0, this.res, this.res, this.buf)
         .then(() => { this._pending = false; this._evaluate(); })
-        .catch(() => { this._pending = false; });
+        .catch((e) => { this._pending = false; console.error('[scorer]', e); });
     } else {
       r.readRenderTargetPixels(this.rt, 0, 0, this.res, this.res, this.buf);
       this._evaluate();

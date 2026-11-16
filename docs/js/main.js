@@ -6,12 +6,15 @@ import { DeskPanel } from './ui.js';
 import { Payoff } from './payoff.js';
 import { Sfx } from './audio.js';
 import { Game } from './game.js';
+import { Decor, paperTexture } from './decor.js';
+import { GoalFx, Burst } from './fx.js';
 
 // Stage layout, metres, relative to the seated player's eyes (three.js looks down -Z).
-const LAMP_POS = new THREE.Vector3(0, 0.2, -0.3);
+// Lamp sits ~47 deg above eye line: out of the way of the screen and the sign, beam pouring down from above.
+const LAMP_POS = new THREE.Vector3(0, 0.27, -0.25);
 const WALL_Z = -1.0;
 const FRAME = 0.9;                     // scored square of wall = mask image
-const OVERLAY_ALPHA = 0.25;
+const OVERLAY_ALPHA = 0.16;
 
 const statusEl = document.getElementById('status');
 const vrButton = document.getElementById('enter-vr');
@@ -39,7 +42,7 @@ scene.add(ambient);
 const stage = new THREE.Group();
 scene.add(stage);
 
-const wall = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.9), new THREE.MeshLambertMaterial({ color: 0xffffff }));
+const wall = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.9), new THREE.MeshLambertMaterial({ color: 0xffffff, map: paperTexture() }));
 wall.position.set(0, 0, WALL_Z);
 wall.receiveShadow = true;
 wall.layers.enable(LAYER_WALL);
@@ -56,22 +59,18 @@ lamp.shadow.bias = -0.0005;
 lamp.layers.enable(LAYER_WALL);
 stage.add(lamp, lamp.target);
 
-const bulb = new THREE.Mesh(new THREE.SphereGeometry(0.018, 16, 12), new THREE.MeshBasicMaterial({ color: 0xffe6a0 }));
-bulb.position.copy(LAMP_POS).add(new THREE.Vector3(0, 0, 0.03));
-stage.add(bulb);
-
-const desk = new THREE.Mesh(new THREE.BoxGeometry(0.9, 0.03, 0.5), new THREE.MeshLambertMaterial({ color: 0x40302a }));
-desk.position.set(0, -0.53, -0.35);
-stage.add(desk);
+const decor = new Decor(stage, { LAMP_POS, WALL_Z, wall });   // theatre, lamp, beam, dust (no shadows, not scored)
 
 const overlay = new THREE.Mesh(new THREE.PlaneGeometry(FRAME, FRAME),
   new THREE.MeshBasicMaterial({ transparent: true, opacity: OVERLAY_ALPHA, depthWrite: false }));
+const goalFx = new GoalFx(wall, FRAME);
 overlay.position.z = 0.001;
 overlay.renderOrder = 1;
 wall.add(overlay);
 
 // ---------------------------------------------------------------- hands
-const handMat = new THREE.MeshStandardMaterial({ color: 0xd8b8a0, roughness: 0.85, side: THREE.DoubleSide, shadowSide: THREE.DoubleSide });
+const handMat = new THREE.MeshStandardMaterial({ color: 0xffd7b5, emissive: 0x3a1c0c, roughness: 0.6, transparent: true, opacity: 0.42,
+  depthWrite: false, side: THREE.DoubleSide, shadowSide: THREE.DoubleSide });   // ghostly; shadows stay solid
 const hands = [0, 1].map((i) => {
   const xrHand = renderer.xr.getHand(i);
   scene.add(xrHand);
@@ -83,14 +82,14 @@ const hands = [0, 1].map((i) => {
 // ---------------------------------------------------------------- systems
 const scorer = new ShadowScorer(renderer, scene, wall, { frame: FRAME });
 const sfx = new Sfx();
-const SOUNDS = ['match_chime', 'hold_tone', ...LEVELS.map((l) => l.sfx)];
+const SOUNDS = ['match_chime', 'hold_tone', 'music_box', ...LEVELS.map((l) => l.sfx)];
 const ui = new DeskPanel((id) => onButton(id));
 ui.mesh.position.set(0, -0.37, -0.36);
 ui.mesh.rotation.x = THREE.MathUtils.degToRad(-50);
 stage.add(ui.mesh);
 
 const masks = {}, overlays = {};
-let payoff = null, feedback = { match: 0, hold: 0 };
+let payoff = null, burst = null, feedback = { match: 0, hold: 0 };
 
 const game = new Game({
   levelStart(lvl) {
@@ -98,14 +97,22 @@ const game = new Game({
     overlay.material.map = overlays[lvl.file];
     overlay.material.needsUpdate = true;
     overlay.visible = true;
+    goalFx.setTarget(lvl.file, overlays[lvl.file]);
+    ui.set(game.mode === 'story' ? { dots: { total: game.levels.length, done: game.index, current: game.index }, sub: '' }
+      : { dots: null, sub: game.mode === 'daily' ? `Daily streak: ${game.dailyStreak}` : 'Tutorial' });
   },
   title: (t) => ui.set({ title: t }),
   hint: (t) => ui.set({ hint: t }),
   match: (m) => ui.set({ match: m }),
   hold: (h) => ui.set({ hold: h }),
   feedback(match, hold) { feedback = { match, hold }; sfx.setHold(hold); },
-  locked() { scorer.clearTarget(); overlay.visible = false; sfx.play('match_chime'); },
-  payoff(lvl) { payoff = new Payoff(wall, overlays[lvl.file], lvl.motion); sfx.play(lvl.sfx); },
+  locked(lvl) {
+    scorer.clearTarget(); overlay.visible = false; goalFx.hide(); sfx.play('match_chime');
+    if (burst) burst.dispose();
+    burst = new Burst(wall, masks[lvl.file], FRAME);
+    if (game.mode === 'story') ui.set({ dots: { total: game.levels.length, done: game.index + 1, current: -1 } });
+  },
+  payoff(lvl) { payoff = new Payoff(wall, overlays[lvl.file], lvl.motion); sfx.play(lvl.sfx); sfx.duck(3); },
   clearPayoff() { if (payoff) payoff.dispose(); payoff = null; },
   completed() {},
   allComplete() {},
@@ -211,6 +218,9 @@ function frame(_time, _xrFrame, fixedDt) {
   ui.update(now, hands.map((h, i) => ({ i, pos: h.tracked ? h.pos('index-finger-tip', tipTmp[i]) : null })));
   game.tick(dt);
   if (payoff) payoff.update(dt);
+  if (burst) { burst.update(dt); if (burst.done) { burst.dispose(); burst = null; } }
+  decor.update(dt);
+  goalFx.update(now, feedback.match, feedback.hold);
   // The goal stirs as the match improves, and pulses while held.
   const pulse = feedback.hold > 0 ? 0.3 * Math.sin(now * 14) * feedback.hold : 0;
   overlay.material.opacity = Math.min(1, OVERLAY_ALPHA * (1 + 0.8 * feedback.match * feedback.match + pulse));

@@ -7,6 +7,7 @@ export class Sfx {
     this.buffers = {};
     this.toneGain = null;
     this.toneSrc = null;
+    this.musicGain = null;
   }
 
   /** Must be called from a user gesture (e.g. the Enter VR click). Safe to call repeatedly. */
@@ -19,6 +20,26 @@ export class Sfx {
     if (this.ctx.state === 'suspended') await this.ctx.resume().catch(() => {});
     await Promise.all(names.map((n) => this._load(n)));
     this._startTone();
+    this._startMusic();
+  }
+
+  /** Quiet music-box loop; dips briefly while a creature's sound plays. */
+  _startMusic() {
+    const buf = this.buffers.music_box;
+    if (!buf || this.musicGain) return;
+    this.musicGain = this.ctx.createGain();
+    this.musicGain.gain.value = 0;
+    this.musicGain.gain.setTargetAtTime(0.16, this.ctx.currentTime, 1.5);   // fade in
+    const src = this.ctx.createBufferSource();
+    src.buffer = buf; src.loop = true;
+    src.connect(this.musicGain).connect(this.ctx.destination);
+    src.start();
+  }
+
+  duck(seconds = 2.5) {
+    if (!this.musicGain) return;
+    const g = this.musicGain.gain, t = this.ctx.currentTime;
+    g.cancelScheduledValues(t); g.setTargetAtTime(0.06, t, 0.15); g.setTargetAtTime(0.16, t + seconds, 0.8);
   }
 
   async _load(name) {

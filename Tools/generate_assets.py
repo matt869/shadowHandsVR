@@ -280,10 +280,40 @@ def bell(f, d):
     return (np.sin(2 * np.pi * f * t) + 0.5 * np.sin(2 * np.pi * f * 2.76 * t) * np.exp(-t * 6)) * np.exp(-t * 3.5)
 
 
+def music_box(seconds=32.0, bpm=72, seed=5):
+    """Gentle, seamless music-box loop: pentatonic bell melody over a slow pad (original, CC0)."""
+    rng = np.random.default_rng(seed)
+    n = int(SR * seconds); out = np.zeros(n + SR * 3)
+    beat = 60.0 / bpm
+    scale = [0, 2, 4, 7, 9, 12, 14, 16, 19]                       # C major pentatonic, 1.5 octaves
+    base = 523.25                                                  # C5
+    chords = [[0, 4, 7], [-3, 0, 4], [-7, -3, 0], [-5, -1, 2]]       # C  Am  F  G (semitones from C)
+    step, i, idx = beat / 2, 0, 4
+    while i * step < seconds:
+        t0 = i * step
+        if rng.random() < (0.85 if i % 2 == 0 else 0.45):
+            idx = int(np.clip(idx + rng.choice([-2, -1, -1, 0, 1, 1, 2]), 0, len(scale) - 1))
+            f = base * 2 ** (scale[idx] / 12)
+            d = 2.2; tt = np.arange(int(SR * d)) / SR
+            note = (np.sin(2 * np.pi * f * tt) + 0.35 * np.sin(2 * np.pi * f * 3.01 * tt) * np.exp(-tt * 9)
+                    + 0.2 * np.sin(2 * np.pi * f * 5.4 * tt) * np.exp(-tt * 16)) * np.exp(-tt * 2.6)
+            k = int(SR * t0); out[k:k + len(note)] += note * (0.28 if i % 8 else 0.36)
+        i += 1
+    bar = beat * 4
+    for b in range(int(seconds / bar)):
+        ch = chords[b % len(chords)]; tt = np.arange(int(SR * bar * 1.15)) / SR
+        env = np.minimum(1, tt / 0.8) * np.minimum(1, np.maximum(0, (bar * 1.15 - tt) / 0.8))
+        pad = sum(np.sin(2 * np.pi * (base / 4) * 2 ** (c / 12) * tt) for c in ch) * env * 0.06
+        k = int(SR * b * bar); out[k:k + len(pad)] += pad
+    loop = out[:n].copy(); loop[:len(out) - n] += out[n:]           # wrap the tails: seamless loop
+    return lowpass(loop, 3)
+
+
 def write_audio():
     os.makedirs(AUD, exist_ok=True)
     sounds = {
         "match_chime.wav": cat(bell(880, 0.25)[: int(SR * 0.12)], bell(1318.5, 0.9)),
+        "music_box.wav": music_box(),
         "hold_tone.wav": np.sin(2 * np.pi * 330 * t_(1.0)) + 0.4 * np.sin(2 * np.pi * 660 * t_(1.0)) + 0.2 * np.sin(2 * np.pi * 495 * t_(1.0)),
         "sfx_bird.wav": cat(*[cat(sweep(2500, 4200, 0.07) * env(int(SR * 0.07), 0.005, 0.03), silence(0.05)) for _ in range(4)],
                             lowpass(noise(1.0, 1), 30) * np.linspace(0.6, 0, int(SR * 1.0)) * np.abs(np.sin(2 * np.pi * 9 * t_(1.0)))),

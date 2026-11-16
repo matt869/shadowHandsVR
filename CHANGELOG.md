@@ -1,5 +1,27 @@
 # Changelog
 
+## 2026-11-16: polish pass (WebXR)
+- **Puppet theatre:** paper screen, wooden frame, red velvet curtains with gold tie-backs, and a
+  "SHADOW HANDS" sign on the valance.
+- **Lamp:** a brass pendant lamp with a glowing shade, a soft light beam to the screen, and dust specks
+  drifting in the beam.
+- **Goal outline:** a soft rim around the target that warms from grey to orange as the match improves,
+  then pulses gold while held.
+- **"It's alive" moment:** a warm flash on the screen and golden sparks rising from the creature's own
+  shape; the music dips while the creature's sound plays.
+- **Ghost hands:** warm, semi-transparent hands instead of solid sticks. Their shadows are still solid.
+- **Desk panel:** a theatre card with a gold border, serif titles, 10 progress dots, a Daily streak line,
+  and warm buttons.
+- **Music:** a gentle music-box loop, synthesized in `Tools/generate_assets.py` (original, CC0).
+- **Lamp raised to (0, 0.27, -0.25):** from the eyes it used to sit exactly in front of the sign.
+
+### Fixed
+- **Hold-to-lock depended on how often shadow readings arrived.** At one reading per second (slow
+  devices), a 1.25 s hold took about 13 s. The hold now runs on frame time, the meter smoothing is
+  time-based, and if readings stop the hold freezes rather than decaying. On this PC's software
+  renderer, locks dropped from about 7 s to about 4 s.
+- **The scorer silently swallowed errors from its readback promise.** It now logs them.
+
 ## 2026-11-16: WebXR version (competition entry)
 The Meta Developer Dashboard isn't available in the Philippines, so the Unity APK can't be submitted
 from there. The competition also accepts WebXR entries as a public link, so the game now has a browser

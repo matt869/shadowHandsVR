@@ -1,6 +1,7 @@
 // Records a gameplay video of the WebXR build frame-by-frame (smooth at any machine speed), with the
 // game's real sounds and captions. Needs playwright + chromium, and ffmpeg on PATH.
-//   node Tools/web_video.cjs   -> Builds/store/shadow_hands_gameplay.mp4 + stills
+//   node Tools/web_video.cjs                 -> Builds/store/shadow_hands_gameplay.mp4 + stills
+//   node Tools/web_video.cjs --encode-only   -> re-encode from existing frames + video_events.json
 // The shadows are cast by a cut-out of each target sliding into the lamp light (no headset here);
 // in VR your own tracked hands cast them. The captions say so.
 const http = require('http'), fs = require('fs'), path = require('path'), { execFileSync } = require('child_process');
@@ -17,7 +18,7 @@ const server = http.createServer((req, res) => {
   res.writeHead(200, { 'Content-Type': TYPES[path.extname(f)] || 'application/octet-stream' }); fs.createReadStream(f).pipe(res);
 });
 
-(async () => {
+async function capture() {
   fs.rmSync(FRAMES, { recursive: true, force: true });
   fs.mkdirSync(FRAMES, { recursive: true });
   await new Promise((r) => server.listen(8767, '127.0.0.1', r));
@@ -101,6 +102,13 @@ const server = http.createServer((req, res) => {
 
   await browser.close(); server.close();
   fs.writeFileSync(path.join(OUT, 'video_events.json'), JSON.stringify(result, null, 1));
+  return result;
+}
+
+(async () => {
+  const result = process.argv.includes('--encode-only')
+    ? JSON.parse(fs.readFileSync(path.join(OUT, 'video_events.json'), 'utf8'))
+    : await capture();
   console.log(`frames ${result.frames} (${(result.frames / FPS).toFixed(1)} s), sounds ${result.events.length}`);
 
   // stills
