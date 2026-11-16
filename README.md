@@ -54,7 +54,18 @@ all 10 levels, Daily mode, Skip and saved progress, pause and resume, rejecting 
 built from joint data, the real MediaPipe model loading, and a webcam hand casting a shadow. Add
 `SH_URL=https://matt869.github.io/shadowHandsVR/` to test the live site. **All checks pass.**
 
-Not yet tested with real hands on a Quest headset. Feedback on which shapes feel too hard is welcome.
+`node Tools/web_xrtest.cjs` tests the **VR code path** with Meta's Immersive Web Emulation Runtime
+(IWER) on an emulated **Meta Quest 3** with hand tracking:
+- entering VR and recentring,
+- tracked hand joints casting a shadow (and the tutorial reacting to it),
+- a fingertip poke on a desk button,
+- a level locking inside the VR session,
+- headset off and back on.
+
+It also checks that **Meta VR Glasses** can enter the session, and the screenshots confirm the whole
+stage fits in the glasses' field of view. **All checks pass.**
+
+Not yet tested with real hands on a physical headset. Feedback on which shapes feel too hard is welcome.
 
 ## Run it locally
 Serve the `docs/` folder with any static server (for example `npx serve docs`) and open it. Webcam
@@ -63,6 +74,7 @@ mode needs `localhost` or HTTPS.
 | Tool | What it does |
 |---|---|
 | `node Tools/web_selftest.cjs` | Full automated playthrough (needs `npm i playwright && npx playwright install chromium`) |
+| `node Tools/web_xrtest.cjs` | VR-path test on an emulated Quest 3 and Meta VR Glasses (also needs `npm i iwer@2.7.0`) |
 | `node Tools/web_video.cjs` | Renders the gameplay video frame by frame, with sound and captions (needs ffmpeg) |
 | `python Tools/generate_assets.py` | Regenerates the silhouettes, sounds and music (Pillow and numpy) |
 
