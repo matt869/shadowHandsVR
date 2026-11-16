@@ -20,7 +20,8 @@ const server = http.createServer((req, res) => {
 
 (async () => {
   const LIVE = process.env.SH_URL;
-  if (!LIVE) await new Promise((r) => server.listen(8765, '127.0.0.1', r));
+  if (!LIVE) await new Promise((r) => server.listen(0, '127.0.0.1', r));   // any free port: never collide with other apps
+  const PORT = LIVE ? 0 : server.address().port;
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -29,7 +30,7 @@ const server = http.createServer((req, res) => {
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   let code = 1;
   try {
-    await page.goto(LIVE ? LIVE.replace(/\/?$/, '/') + 'index.html?selftest' : 'http://127.0.0.1:8765/index.html?selftest', { waitUntil: 'load' });
+    await page.goto(LIVE ? LIVE.replace(/\/?$/, '/') + 'index.html?selftest' : `http://127.0.0.1:${PORT}/index.html?selftest`, { waitUntil: 'load' });
     await page.waitForFunction(() => window.__sh && window.__sh.ready, null, { timeout: 60000 });
     await page.screenshot({ path: path.join(OUT, '00_start.png') });
     await page.waitForFunction(() => window.__selftest && window.__selftest.done, null, { timeout: 600000, polling: 1000 });

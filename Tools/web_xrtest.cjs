@@ -130,10 +130,10 @@ async function runDevice(browser, base, cfgName, full) {
 
 (async () => {
   const LIVE = process.env.SH_URL;
-  if (!LIVE) await new Promise((r) => server.listen(8772, '127.0.0.1', r));
+  if (!LIVE) await new Promise((r) => server.listen(0, '127.0.0.1', r));   // any free port
   fs.mkdirSync(OUT, { recursive: true });
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist'] });
-  const base = LIVE ? LIVE.replace(/\/?$/, '/') : 'http://127.0.0.1:8772/';
+  const base = LIVE ? LIVE.replace(/\/?$/, '/') : `http://127.0.0.1:${server.address().port}/`;
   let lines = [], failures = 0;
   for (const [cfg, full] of [['metaQuest3', true], ['metaVRGlasses', false]]) {
     try { const r = await runDevice(browser, base, cfg, full); lines.push(...r.lines); failures += r.failures; }

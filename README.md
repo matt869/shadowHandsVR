@@ -76,6 +76,7 @@ mode needs `localhost` or HTTPS.
 | `node Tools/web_selftest.cjs` | Full automated playthrough (needs `npm i playwright && npx playwright install chromium`) |
 | `node Tools/web_xrtest.cjs` | VR-path test on an emulated Quest 3 and Meta VR Glasses (also needs `npm i iwer@2.7.0`) |
 | `node Tools/web_video.cjs` | Renders the gameplay video frame by frame, with sound and captions (needs ffmpeg) |
+| `node Tools/web_xr_video.cjs` | Records the gameplay video **through the emulated Quest 3** (IWER): tracked hands, a real button poke, the montage |
 | `python Tools/generate_assets.py` | Regenerates the silhouettes, sounds and music (Pillow and numpy) |
 
 ## Also in this repo: a native Quest app (Unity)

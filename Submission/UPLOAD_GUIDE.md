@@ -26,11 +26,11 @@ doesn't match exactly, look for the closest one.
 - **Package name:** `com.matt869.shadowhands`
 - **Version code:** 1. Every new upload to the same app needs a higher number: raise *Bundle Version Code*
   in Player Settings.
-- **Signing:** release key in `C:\Users\profe\ShadowHands-signing\`. Check it's release-signed before
+- **Signing:** release key in your private `ShadowHands-signing` folder (kept outside the project). Check it's release-signed before
   uploading: `apksigner verify --print-certs Builds/ShadowHands.apk` must show `CN=Shadow Hands, O=matt869`,
   **not** `Android Debug`.
 
-> Keep `C:\Users\profe\ShadowHands-signing\` backed up (USB stick or your own cloud). Meta ties the app to
+> Keep your `ShadowHands-signing` folder backed up (USB stick or your own cloud). Meta ties the app to
 > this key, and without it you can never upload an update.
 
 ## Steps

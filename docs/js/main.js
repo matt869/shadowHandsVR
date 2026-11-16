@@ -260,7 +260,8 @@ const tipTmp = [new THREE.Vector3(), new THREE.Vector3()];
 let simNow = 0;
 /** One frame. fixedDt is only used for frame-by-frame recording (?demo); normal play passes nothing. */
 function frame(_time, _xrFrame, fixedDt) {
-  const dt = fixedDt !== undefined ? fixedDt : Math.min(clock.getDelta(), 0.1);
+  const real = Math.min(clock.getDelta(), 0.1);
+  const dt = fixedDt !== undefined ? fixedDt : hooks.fixedDt || real;   // hooks.fixedDt: frame-by-frame recording in VR
   simNow += dt;
   const now = simNow;
   for (const h of hands) h.update();
@@ -279,6 +280,7 @@ function frame(_time, _xrFrame, fixedDt) {
   if (hooks.beforeScore) hooks.beforeScore(now);
   scorer.update();
   renderer.render(scene, camera);
+  if (hooks.afterRender) hooks.afterRender();
 }
 
 // Test hooks (used by Tools/web_selftest.mjs). Harmless in normal play.

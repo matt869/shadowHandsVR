@@ -21,13 +21,13 @@ const server = http.createServer((req, res) => {
 async function capture() {
   fs.rmSync(FRAMES, { recursive: true, force: true });
   fs.mkdirSync(FRAMES, { recursive: true });
-  await new Promise((r) => server.listen(8767, '127.0.0.1', r));
+  await new Promise((r) => server.listen(0, '127.0.0.1', r));   // any free port
   const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
   page.on('pageerror', (e) => console.log('pageerror', e.message));
   await page.exposeFunction('__saveFrame', (i, dataUrl) =>
     fs.writeFileSync(path.join(FRAMES, `f${String(i).padStart(5, '0')}.jpg`), Buffer.from(dataUrl.split(',')[1], 'base64')));
-  await page.goto('http://127.0.0.1:8767/index.html?demo', { waitUntil: 'load' });
+  await page.goto(`http://127.0.0.1:${server.address().port}/index.html?demo`, { waitUntil: 'load' });
   await page.waitForFunction(() => window.__sh && window.__sh.ready && window.__sh.demo, null, { timeout: 60000 });
 
   const result = await page.evaluate(async (FPS) => {

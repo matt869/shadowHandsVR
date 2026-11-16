@@ -38,7 +38,11 @@ export class CapsuleHand {
     for (let i = 0; i < PALM.length; i++) idx.push(PALM.length, i, (i + 1) % PALM.length);
     palmGeo.setIndex(idx);
     this.palm = new THREE.Mesh(palmGeo, material);
-    for (const m of [this.bones, this.knuckles, this.palm]) {
+    // Forearm: casts the arm's shadow but is never drawn (seen from inside the head it would be a
+    // giant tube across the view; on a headset you only see your hands).
+    this.forearm = new THREE.Mesh(new THREE.CylinderGeometry(1, 1, 1, 12),
+      new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide, shadowSide: THREE.DoubleSide }));
+    for (const m of [this.bones, this.knuckles, this.palm, this.forearm]) {
       m.castShadow = true;
       m.receiveShadow = false;
       m.frustumCulled = false;
@@ -75,12 +79,14 @@ export class CapsuleHand {
       this._capsule(bi++, ki, _a, _b, r);
       ki += 2;
     }
-    // Forearm: continue backward from the wrist, away from the knuckles.
+    // Forearm: continue backward from the wrist, away from the knuckles (shadow only).
     if (this.pos('wrist', _a) && this.pos('middle-finger-phalanx-proximal', _b)) {
-      _d.subVectors(_a, _b).normalize().multiplyScalar(FOREARM_LEN).add(_a);
-      this._capsule(bi++, ki, _a, _d, FOREARM_R);
-      ki += 2;
-    }
+      const dir = _d.subVectors(_a, _b).normalize();
+      this.forearm.quaternion.setFromUnitVectors(_up, dir);
+      this.forearm.position.copy(_a).addScaledVector(dir, FOREARM_LEN / 2);
+      this.forearm.scale.set(FOREARM_R, FOREARM_LEN, FOREARM_R);
+      this.forearm.visible = true;
+    } else this.forearm.visible = false;
     this.bones.count = bi;
     this.knuckles.count = ki;
     this.bones.instanceMatrix.needsUpdate = true;
