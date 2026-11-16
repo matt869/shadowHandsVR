@@ -8,7 +8,7 @@ const { chromium } = require('playwright');
 
 const ROOT = path.resolve(__dirname, '..', 'docs');
 const OUT = path.resolve(__dirname, '..', 'Builds', 'web_selftest');
-const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.png': 'image/png', '.wav': 'audio/wav', '.txt': 'text/plain' };
+const TYPES = { '.html': 'text/html', '.js': 'text/javascript', '.mjs': 'text/javascript', '.wasm': 'application/wasm', '.png': 'image/png', '.wav': 'audio/wav', '.txt': 'text/plain' };
 
 const server = http.createServer((req, res) => {
   const rel = decodeURIComponent(req.url.split('?')[0]).replace(/^\/+/, '') || 'index.html';
@@ -34,7 +34,7 @@ const server = http.createServer((req, res) => {
     await page.screenshot({ path: path.join(OUT, '00_start.png') });
     await page.waitForFunction(() => window.__selftest && window.__selftest.done, null, { timeout: 600000, polling: 1000 });
     const r = await page.evaluate(() => window.__selftest);
-    for (const k of ['shotTutorial', 'shotDragon', 'handShot'])
+    for (const k of ['shotTutorial', 'shotDragon', 'handShot', 'webcamShot'])
       if (r[k]) fs.writeFileSync(path.join(OUT, k + '.png'), Buffer.from(r[k].split(',')[1], 'base64'));
     const lines = [...r.lines, ...errors.map((e) => 'ERROR ' + e)];
     fs.writeFileSync(path.join(OUT, 'results.txt'), lines.join('\n') + '\n');

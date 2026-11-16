@@ -1,5 +1,22 @@
 # Changelog
 
+## 2026-11-17: hackathon-ready (webcam mode + showcase)
+- **Webcam mode:** play on any laptop or desktop with your real hands. Google's MediaPipe Hand
+  Landmarker 1.2.0 is included in `docs/vendor/mediapipe` (npm checksum verified; model sha256 recorded)
+  and runs entirely in the browser. Its 21 points per hand drive the same capsule hand as VR. The mapping
+  works like a mirror, and moving your hand closer to the camera gives a bigger shadow. The webcam hand
+  is shadow-only (you see your real hand in the preview).
+- **Desktop start card:** Play with your webcam, Enter VR (enabled on a Quest), and a Sound on/off toggle
+  that mutes everything through a master gain. It sits over the curtain so it never covers the screen.
+  A mirrored webcam preview shows the tracked points and says the camera stays on the device.
+- **Link previews** (Open Graph image, title and description) and a favicon.
+- **README rewritten as a showcase:** demo GIF, Play link, how the physical IoU scoring works, how it's
+  tested, and credits and licences.
+- **Fixed:** the MediaPipe import resolved relative to `js/` instead of the page, so webcam mode would
+  have failed for every user. The self-test caught it.
+- **Self-test:** now also checks that the real MediaPipe model loads and runs, and that a MediaPipe-shaped
+  hand casts a shadow. All checks pass.
+
 ## 2026-11-16: polish pass (WebXR)
 - **Puppet theatre:** paper screen, wooden frame, red velvet curtains with gold tie-backs, and a
   "SHADOW HANDS" sign on the valance.

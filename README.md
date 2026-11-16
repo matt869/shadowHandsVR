@@ -1,151 +1,79 @@
 # Shadow Hands
 
-Hands-first shadow-puppet puzzle game for Meta Quest 3 / Meta VR Glasses. Sit under a lamp, shape your
-real tracked hands, and match the silhouette on the wall. Hold the match and the shadow comes alive.
-Built for the Meta VR Start Developer Competition 2026 (Gaming track, New Experience). Fully offline,
-no controllers.
+**Hand-shadow puppets, played with your real hands.** Sit under a lamp, shape your hands until their
+shadow matches the silhouette on the wall, and hold it, and the shadow comes alive.
 
-## Play it
+<p align="center"><img src="docs/media/demo.gif" alt="A rabbit-shaped shadow slides onto the paper screen, matches the target and locks" width="520"></p>
 
-**https://matt869.github.io/shadowHandsVR/**: open it in the **Meta Quest Browser**, press **Enter VR**,
-and use your hands. No install, no controllers.
+### ▶ [Play now: matt869.github.io/shadowHandsVR](https://matt869.github.io/shadowHandsVR/)
 
-The game ships in two versions:
+No install, no account, nothing uploaded. Two ways to play:
 
-| | **WebXR (the competition entry)** | Unity (Quest APK) |
+| | How | What you need |
 |---|---|---|
-| Where | [`docs/`](docs/), served by GitHub Pages | `Assets/`, Unity 6000.0.85f2 + Meta XR SDK 207.0.1 |
-| Runs on | Quest Browser, hand tracking via WebXR | Installed APK |
-| Needs the Meta Developer Dashboard | No | Yes (not available in every country) |
-| Automated test | `node Tools/web_selftest.cjs`: **all checks pass** | Editor self-test: **33/33 pass** |
-| Tested with real hands on a headset | **Not yet** | **Not yet** |
+| **VR** | Open the link in the **Meta Quest Browser**, press **Enter VR**, put your hand between the lamp and the wall | Meta Quest with hand tracking |
+| **Webcam** | Open the link on a laptop or desktop, press **Play with your webcam**, hold your hand up to the camera | Any webcam and a modern browser |
 
-Both versions play the same 10 levels, tutorial and Daily Shadow, with the same scoring: the real shadow on
-the wall compared to the target silhouette (IoU).
+In webcam mode the camera works like the lamp: bring your hand closer to make the shadow bigger.
 
-## WebXR version (`docs/`)
+## Features
+- **10 creatures**, from one-hand animals (bird, rabbit, dog, snail, swan, wolf) to two-hand shapes
+  (deer, elephant, crab, dragon), none of which need crossed fingers.
+- **A 20-second tutorial** on first launch, then Story mode with saved progress.
+- **Daily Shadow:** the same puzzle for everyone each day, with a streak.
+- **Hold-to-lock:** keep the match for 1.25 s. A forgiving decay copes with shaky tracking.
+- **It comes alive:** a warm flash, golden sparks, and the creature hops, howls, sprays water or
+  breathes fire.
+- **A puppet-theatre stage:** velvet curtains, a paper screen, a brass lamp with a visible beam and dust
+  in the light, and a music-box soundtrack.
+- **Hands only:** no controllers, seated, everything within arm's reach.
 
-- Built with three.js 0.169.0. It's included in `docs/vendor/`, so the page loads nothing from other sites.
-- Hands: each hand-tracking joint becomes a solid capsule hand (bones, palm, forearm) that casts the shadow.
-- **Test without a headset:** `npm i playwright && npx playwright install chromium`, then
-  `node Tools/web_selftest.cjs`. It plays every level in headless Chrome with real shadows and writes
-  results and screenshots to `Builds/web_selftest/`.
-- **Publish:** in the GitHub repo, go to Settings → Pages → Build and deployment → *Deploy from a branch* →
-  `main` / `/docs` → Save.
+| | |
+|---|---|
+| ![The bird target and a matching shadow](docs/media/shot_bird_matching.jpg) | ![The dragon breathes fire after a match](docs/media/shot_dragon_payoff.jpg) |
+| ![Two-hand elephant shape being matched](docs/media/shot_elephant_matching.jpg) | ![Desk panel with progress dots and poke buttons](docs/media/shot_desk.jpg) |
 
-## Unity version (`Assets/`)
+## How it works
+The score is **physical, not a gesture classifier**. A spot light casts your tracked hands onto the
+wall, and a small orthographic camera reads the *actual shadow* back from the GPU. The game then
+computes the **intersection over union (IoU)** of the shadow and the target silhouette. Any hand shape
+that casts the right shadow counts; there's no "correct" pose to memorize.
 
-1. Open this folder in Unity **6000.0.85f2** (Android Build Support installed). Packages, including the
-   Meta SDK from Meta's registry, resolve automatically from `Packages/manifest.json`.
-   `Assets/Scenes/Main.unity` is ready to build. To rebuild it: **ShadowHands > Build Quest Scene (Building Blocks)**.
-2. Build: `bash Tools/build_release.sh` (release-signed, needs your key) or **ShadowHands > Build APK**.
-3. Test without a headset: **ShadowHands > Run Self-Test (no headset)**, or `bash Tools/selftest.sh`.
-4. Optional, to regenerate art and audio: `python Tools/generate_assets.py` (needs Pillow and numpy).
+- **Hands.** In VR, the WebXR hand-tracking joints are built into a solid capsule hand (bones, palm and
+  forearm) that casts the shadow. With a webcam, Google's MediaPipe Hand Landmarker finds 21 points per
+  hand and maps them onto the same capsule hand.
+- **Robust scoring.** Each pixel is compared with the brightest it has ever been, so the lamp's
+  fall-off at the edges is never mistaken for shadow. Smoothing and the hold timer run on real time,
+  so the game feels the same on fast and slow devices.
+- **Offline and private.** three.js and MediaPipe are included in this repo (checksums verified at
+  download), so the page loads nothing from other sites. Webcam frames never leave the device.
 
-See [CHANGELOG.md](CHANGELOG.md) for what changed and why.
+## Tested
+`node Tools/web_selftest.cjs` plays the whole game in headless Chrome with real shadows: the tutorial,
+all 10 levels, Daily mode, Skip and saved progress, pause and resume, rejecting a wrong shape, a VR hand
+built from joint data, the real MediaPipe model loading, and a webcam hand casting a shadow. Add
+`SH_URL=https://matt869.github.io/shadowHandsVR/` to test the live site. **All checks pass.**
 
-## Everything you need is free
+Not yet tested with real hands on a Quest headset. Feedback on which shapes feel too hard is welcome.
 
-| Need | Use | Cost |
-|---|---|---|
-| Engine | Unity 6 (Personal license) | Free |
-| Hand tracking, interactions, simulator | **Meta XR All-in-One SDK v207** (Core + Interaction SDK + XR Simulator) | Free |
-| Publish build for judges | Meta Quest Developer Dashboard (needs a verified dev org — do this today, verification can take a day) | Free |
-| Desktop testing | Meta XR Simulator (ships in the All-in-One) | Free |
-| Agentic dev tooling | **Meta VR CLI** (`metavr`) + Claude Code plugin `meta-vr@meta-quest` | Free |
-| 3D props (lamp, desk) | Meta 3D asset library via `metavr`, or Kenney.nl (CC0) | Free |
-| Sound | freesound.org (filter CC0), Kenney audio packs | Free |
-| Silhouette art | Draw black-on-white PNGs (any paint tool), or trace CC0 animal silhouettes | Free |
-| Video | Quest's built-in recorder → YouTube | Free |
+## Run it locally
+Serve the `docs/` folder with any static server (for example `npx serve docs`) and open it. Webcam
+mode needs `localhost` or HTTPS.
 
-**No LLM, no cloud, no REST API.** The game must pass the "take it away" test and must stay launchable through Dec 9 — offline-only is the safest possible submission.
+| Tool | What it does |
+|---|---|
+| `node Tools/web_selftest.cjs` | Full automated playthrough (needs `npm i playwright && npx playwright install chromium`) |
+| `node Tools/web_video.cjs` | Renders the gameplay video frame by frame, with sound and captions (needs ffmpeg) |
+| `python Tools/generate_assets.py` | Regenerates the silhouettes, sounds and music (Pillow and numpy) |
 
-## Project structure
+## Also in this repo: a native Quest app (Unity)
+`Assets/` holds a Unity 6 + Meta XR SDK 207 version of the same game. Its in-editor self-test passes
+33/33, and it builds a release-signed APK with `bash Tools/build_release.sh`. See
+[CHANGELOG.md](CHANGELOG.md) and [MANUAL_STEPS.md](MANUAL_STEPS.md).
 
-```
-ShadowHands/
-├── Assets/
-│   ├── Scenes/
-│   │   └── Main.unity               ← one scene: Desk + Lamp + Wall + Hands + UI
-│   ├── Scripts/
-│   │   ├── ShadowScorer.cs          ← reads the REAL shadow off the wall, computes IoU
-│   │   ├── PuzzleManager.cs         ← level flow, hold-to-lock, Story + Daily modes
-│   │   ├── SilhouetteLevel.cs       ← ScriptableObject: one puzzle (mask, hint, payoff)
-│   │   ├── HandShadowCaster.cs      ← forces hand meshes to cast shadows / correct layer
-│   │   └── MatchMeterUI.cs          ← match bar, hold ring, level name, hint
-│   ├── Editor/ShadowHandsSetup.cs   ← ShadowHands menu: one-click layers, levels, prefabs, scene
-│   ├── Levels/                      ← Level_00_Tutorial_Bird … Level_10_Dragon (generated)
-│   ├── Art/Silhouettes/             ← rabbit.png, wolf.png … (black on white, 512², Read/Write ON)
-│   ├── Audio/                       ← lamp hum, match chime, per-level payoff sfx
-│   └── Prefabs/                     ← Payoff_Rabbit (animated sprite/mesh that hops), etc.
-├── Packages/
-│   └── manifest.additions.json      ← what to add to the generated manifest (or use Asset Store)
-├── Submission/
-│   └── devpost_form_draft.md        ← pre-written form text + Day-5 checklist
-└── README.md
-```
-
-## Scene setup
-
-Follow **MANUAL_STEPS.md, section A**. In short: create a Unity 6 URP project, switch to Android, install
-the Meta XR All-in-One SDK, run Project Setup Tool > Fix All, and add the **Camera Rig** + **Hand Tracking**
-Building Blocks. Then run **ShadowHands > Setup Everything (1-4)**. It creates the layers, levels, payoff
-prefabs and URP shadow settings, builds the lamp, wall, WallCam, overlay, desk and UI, and wires every
-event. Last, add ISDK poke interaction to `DeskCanvas`.
-
-How the stage works (all relative to the player's eyes, placed at runtime by `StageAnchor`):
-- **Lamp:** a spot light 0.2 m above and 0.3 m in front of the eyes, with hard shadows. It is the only
-  real-time light.
-- **Wall:** a white Lit quad 1.0 m ahead (layer `Wall`). **WallCam** scores the central 0.9 x 0.9 m of it.
-- **WallCam culling mask = Wall + Hands.** A layer the camera doesn't render casts no shadows in that
-  camera, so Wall-only would score 0. The hands are drawn into it only as invisible shadow-only copies
-  (`HandShadowCaster`).
-- **GoalOverlay:** the faint target on layer `Overlay`. WallCam doesn't see it.
-
-Art and audio come from `python Tools/generate_assets.py`. To make a target from a real hand,
-use `MaskRecorder`.
-
-## Agentic workflow (speeds up Days 2–4)
-
-```bash
-curl -fsSL https://developers.meta.com/horizon/install-cli/ | sh     # mac/linux
-# windows: iwr -useb https://developers.meta.com/horizon/install-cli/windows/ | iex
-metavr init          # installs the agent skill + MCP server
-metavr doctor
-metavr device list   # Quest in Developer Mode + USB debugging
-```
-In Claude Code: `/plugin marketplace add meta-quest/agentic-tools` then `/plugin install meta-vr@meta-quest`.
-Then you can say things like "deploy the APK, launch it, screenshot the wall" and it does it.
-
-Glasses check: `metavr device fov-sim` narrows a Quest's FOV to Meta VR Glasses — run your
-playthrough once this way and mention it in the write-up.
-
-## Level list (10 = ~10 minutes)
-
-| # | Silhouette | Hands | Payoff |
-|---|---|---|---|
-| # | Silhouette | Hands | Threshold | Payoff |
-|---|---|---|---|---|
-| 0 | Bird (tutorial, first launch) | one hand | 0.55 | flaps away |
-| 1 | Bird | one hand, flat, thumb up | 0.65 | flaps away |
-| 2 | Rabbit | one hand, two fingers up | 0.65 | hops |
-| 3 | Dog | one hand, pinky dropped for the jaw | 0.65 | barks |
-| 4 | Snail | fist + two fingers | 0.70 | crawls off |
-| 5 | Swan | arm up, wrist bent | 0.70 | glides |
-| 6 | Wolf | one hand, open jaw | 0.70 | howls at a moon that appears |
-| 7 | Deer | two hands (antlers) | 0.70 | turns, walks off |
-| 8 | Elephant | two hands (ears + trunk) | 0.75 | sprays water |
-| 9 | Crab | two hands | 0.75 | scuttles sideways |
-| 10 | Dragon | two hands | 0.75 | breathes fire (finale) |
-
-No shape needs crossed fingers, because hand tracking fails there. One-hand shapes come first.
-
-## Tuning notes
-- **Difficulty is the first thing to tune on device.** In simulation, a shadow 4 cm off target scores
-  about 0.47 IoU. Record real-hand targets with `MaskRecorder`, or lower `lockThreshold`.
-- Resolution 128 is plenty; drop to 64 if you need frame time. `ShadowScorer.renderEveryNFrames = 2`
-  halves the scoring cost. Readback is async, so it never stalls.
-- If the meter is jittery, lower `PuzzleManager.smoothing` toward 0.1. Hold decay keeps it forgiving.
-- If the meter reacts upside-down, toggle `ShadowScorer.flipMaskY`. If it reacts mirrored, toggle `flipMaskX`.
-- Try `HandShadowCaster.hideVisibleHands`. It shows only the shadow, which feels more magical and hides
-  tracking jitter.
+## Credits
+- Game, code, silhouettes and all sounds and music: **matt869**. The art and audio are generated by
+  `Tools/generate_assets.py`.
+- [three.js](https://threejs.org) 0.169.0, MIT License (`docs/vendor/three.LICENSE.txt`).
+- [MediaPipe](https://github.com/google-ai-edge/mediapipe) Tasks Vision 1.2.0 and the Hand Landmarker
+  model, Apache License 2.0 (`docs/vendor/mediapipe/NOTICE.txt`).

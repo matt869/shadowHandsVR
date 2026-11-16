@@ -8,6 +8,7 @@ import { Sfx } from './audio.js';
 import { Game } from './game.js';
 import { Decor, paperTexture } from './decor.js';
 import { GoalFx, Burst } from './fx.js';
+import { WebcamHands } from './webcam.js';
 
 // Stage layout, metres, relative to the seated player's eyes (three.js looks down -Z).
 // Lamp sits ~47 deg above eye line: out of the way of the screen and the sign, beam pouring down from above.
@@ -78,6 +79,12 @@ const hands = [0, 1].map((i) => {
   scene.add(h.group);
   return h;
 });
+
+// Webcam hands (desktop/laptop): same capsule hands, driven by MediaPipe instead of WebXR.
+const webcam = new WebcamHands(stage);
+// Invisible but shadow-casting: you already see your real hand in the webcam preview, so only its shadow shows.
+const shadowOnlyMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false, side: THREE.DoubleSide, shadowSide: THREE.DoubleSide });
+const camHands = webcam.hands.map((h) => { const c = new CapsuleHand(h, shadowOnlyMat); scene.add(c.group); return c; });
 
 // ---------------------------------------------------------------- systems
 const scorer = new ShadowScorer(renderer, scene, wall, { frame: FRAME });
@@ -177,7 +184,8 @@ async function setupVRButton() {
   const ok = navigator.xr && await navigator.xr.isSessionSupported('immersive-vr').catch(() => false);
   if (!ok) {
     vrButton.disabled = true;
-    setStatus('Open this page in the Meta Quest Browser to play with your hands.');
+    vrButton.textContent = 'VR: open on a Quest';
+    setStatus('Play with your hands through your webcam, or open this page in the Meta Quest Browser for VR.');
     return;
   }
   setStatus('Sit comfortably, then press Enter VR. Hands only - no controllers needed.');
@@ -186,6 +194,47 @@ async function setupVRButton() {
     if (s) s.end(); else enterVR();
   });
 }
+
+// ---------------------------------------------------------------- webcam + sound buttons
+const hud = document.getElementById('hud');
+const camButton = document.getElementById('play-webcam');
+const soundButton = document.getElementById('sound');
+const preview = document.getElementById('preview');
+const previewDots = document.getElementById('preview-dots');
+
+async function toggleWebcam() {
+  sfx.unlock(SOUNDS);
+  if (webcam.running) {
+    webcam.stop(); preview.style.display = 'none'; hud.classList.remove('compact');
+    camButton.textContent = 'Play with your webcam';
+    return;
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) { setStatus('This browser has no camera access.'); return; }
+  camButton.disabled = true; camButton.textContent = 'Starting...';
+  try {
+    setStatus('Loading hand tracking (runs on this device)...');
+    await webcam.load();
+    setStatus('Allow the camera when your browser asks.');
+    const video = await webcam.startCamera();
+    previewDots.parentElement.insertBefore(video, previewDots);
+    preview.style.display = 'block';
+    hud.classList.add('compact');
+    camButton.textContent = 'Stop webcam';
+    setStatus('Hold your hand up to the camera. Closer = bigger shadow.');
+  } catch (e) {
+    camButton.textContent = 'Play with your webcam';
+    setStatus(e && e.name === 'NotAllowedError' ? 'Camera permission was refused. Allow it in the address bar and try again.'
+      : e && e.name === 'NotFoundError' ? 'No webcam found on this device.' : 'Could not start the webcam: ' + (e && e.message));
+  } finally { camButton.disabled = false; }
+}
+camButton.addEventListener('click', toggleWebcam);
+soundButton.addEventListener('click', () => {
+  sfx.unlock(SOUNDS);
+  const muted = !sfx.muted;
+  sfx.setMuted(muted);
+  soundButton.textContent = muted ? 'Sound: off' : 'Sound: on';
+  soundButton.setAttribute('aria-pressed', String(!muted));
+});
 
 // Desktop: click the panel with the mouse (for testing; the game is made for hands).
 const ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
@@ -215,6 +264,9 @@ function frame(_time, _xrFrame, fixedDt) {
   simNow += dt;
   const now = simNow;
   for (const h of hands) h.update();
+  webcam.update(now);
+  for (const c of camHands) c.update();
+  if (webcam.running) webcam.drawOverlay(previewDots);
   ui.update(now, hands.map((h, i) => ({ i, pos: h.tracked ? h.pos('index-finger-tip', tipTmp[i]) : null })));
   game.tick(dt);
   if (payoff) payoff.update(dt);
@@ -231,7 +283,7 @@ function frame(_time, _xrFrame, fixedDt) {
 
 // Test hooks (used by Tools/web_selftest.mjs). Harmless in normal play.
 const hooks = {};
-window.__sh = { THREE, renderer, scene, camera, stage, wall, lamp, scorer, game, hands, ui, handMat, hooks, recenter, masks, overlays, LAMP_POS, WALL_Z, FRAME,
+window.__sh = { THREE, renderer, scene, camera, stage, wall, lamp, scorer, game, hands, ui, handMat, hooks, recenter, masks, overlays, LAMP_POS, WALL_Z, FRAME, webcam, camHands,
   step: (dt) => frame(0, null, dt) };
 
 async function main() {
@@ -245,6 +297,6 @@ async function main() {
   window.__sh.ready = true;
   const q = new URLSearchParams(location.search);
   if (q.has('selftest')) (await import('./selftest.js')).run(window.__sh);
-  if (q.has('demo')) { renderer.setAnimationLoop(null); document.getElementById('hud').style.display = 'none'; window.__sh.demo = true; }
+  if (q.has('demo')) { renderer.setAnimationLoop(null); hud.style.display = 'none'; window.__sh.demo = true; }
 }
 main().catch((e) => { console.error(e); setStatus('Error: ' + e.message); });

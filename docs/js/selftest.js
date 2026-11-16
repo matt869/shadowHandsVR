@@ -92,6 +92,34 @@ export async function run(sh) {
   for (const o of Object.values(fakeXR.joints)) stage.remove(o);
   await wait(0.4);
 
+  // ---- webcam mode, part 1: the real MediaPipe model loads from vendor/ and runs (no camera needed)
+  try {
+    const tl = performance.now();
+    await sh.webcam.load();
+    const blank = document.createElement('canvas'); blank.width = 320; blank.height = 240;
+    blank.getContext('2d').fillRect(0, 0, 320, 240);
+    const r = sh.webcam.landmarker.detectForVideo(blank, performance.now());
+    check(Array.isArray(r.landmarks) && r.landmarks.length === 0, `MediaPipe hand model loads locally and runs (${((performance.now() - tl) / 1000).toFixed(1)}s, 0 hands in a blank frame)`);
+  } catch (e) { check(false, 'MediaPipe hand model loads locally and runs: ' + e.message); }
+
+  // ---- webcam mode, part 2: a MediaPipe-shaped result (open hand) becomes a shadow-casting hand
+  {
+    const W = [[0, 0.08, 0], [-0.03, 0.06, 0], [-0.05, 0.03, 0], [-0.065, 0.005, 0], [-0.075, -0.015, 0]];
+    [-0.02, 0, 0.02, 0.038].forEach((x) => W.push([x, 0, 0], [x, -0.04, 0], [x, -0.065, 0], [x, -0.085, 0]));
+    const world = W.map(([x, y, z]) => ({ x, y, z }));
+    const img = W.map(([x, y]) => ({ x: 0.5 + x * 2.5, y: 0.5 + y * 2.5, z: 0 }));
+    const fakeRes = { landmarks: [img], worldLandmarks: [world], handedness: [[{ categoryName: 'Right' }]] };
+    sh.webcam.apply(fakeRes, game.clock);
+    for (const c of sh.camHands) c.update();
+    const tc = performance.now();
+    while (scorer.coverage <= 0.03 && performance.now() - tc < 5000) { sh.webcam.apply(fakeRes, game.clock); await wait(0.1); }
+    check(sh.camHands.some((c) => c.tracked) && scorer.coverage > 0.03, `webcam hand (MediaPipe landmarks) casts a shadow on the wall (coverage ${scorer.coverage.toFixed(3)})`);
+    out.webcamShot = sh.renderer.domElement.toDataURL('image/png');
+    for (const h of sh.webcam.hands) { h.hide(); h.lastSeen = -1; }
+    for (const c of sh.camHands) c.update();
+    await wait(0.4);
+  }
+
   // ---- tutorial then all story levels
   await play('tutorial', 'shotTutorial');
   check(game.mode === 'story' && game.index === 0, 'tutorial hands over to Story level 1');

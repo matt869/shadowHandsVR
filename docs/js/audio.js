@@ -8,6 +8,8 @@ export class Sfx {
     this.toneGain = null;
     this.toneSrc = null;
     this.musicGain = null;
+    this.master = null;
+    this.muted = false;
   }
 
   /** Must be called from a user gesture (e.g. the Enter VR click). Safe to call repeatedly. */
@@ -16,6 +18,9 @@ export class Sfx {
       const AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
       this.ctx = new AC();
+      this.master = this.ctx.createGain();
+      this.master.gain.value = this.muted ? 0 : 1;
+      this.master.connect(this.ctx.destination);
     }
     if (this.ctx.state === 'suspended') await this.ctx.resume().catch(() => {});
     await Promise.all(names.map((n) => this._load(n)));
@@ -32,7 +37,7 @@ export class Sfx {
     this.musicGain.gain.setTargetAtTime(0.16, this.ctx.currentTime, 1.5);   // fade in
     const src = this.ctx.createBufferSource();
     src.buffer = buf; src.loop = true;
-    src.connect(this.musicGain).connect(this.ctx.destination);
+    src.connect(this.musicGain).connect(this.master);
     src.start();
   }
 
@@ -40,6 +45,11 @@ export class Sfx {
     if (!this.musicGain) return;
     const g = this.musicGain.gain, t = this.ctx.currentTime;
     g.cancelScheduledValues(t); g.setTargetAtTime(0.06, t, 0.15); g.setTargetAtTime(0.16, t + seconds, 0.8);
+  }
+
+  setMuted(m) {
+    this.muted = m;
+    if (this.master) this.master.gain.setTargetAtTime(m ? 0 : 1, this.ctx.currentTime, 0.05);
   }
 
   async _load(name) {
@@ -55,7 +65,7 @@ export class Sfx {
     if (!this.ctx || !buf) return;
     const src = this.ctx.createBufferSource(), g = this.ctx.createGain();
     src.buffer = buf; g.gain.value = volume;
-    src.connect(g).connect(this.ctx.destination);
+    src.connect(g).connect(this.master);
     src.start(this.ctx.currentTime + delay);
   }
 
@@ -66,7 +76,7 @@ export class Sfx {
     this.toneGain.gain.value = 0;
     this.toneSrc = this.ctx.createBufferSource();
     this.toneSrc.buffer = buf; this.toneSrc.loop = true;
-    this.toneSrc.connect(this.toneGain).connect(this.ctx.destination);
+    this.toneSrc.connect(this.toneGain).connect(this.master);
     this.toneSrc.start();
   }
 

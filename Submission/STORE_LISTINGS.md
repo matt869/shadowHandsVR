@@ -37,13 +37,16 @@ Make hand shadows on a lamp-lit wall. Match the silhouette and it comes alive. H
 > - The score is physical: the game measures the real shadow on the wall, so any hand shape that
 >   casts the right silhouette counts
 >
-> **How to play:** open https://matt869.github.io/shadowHandsVR/ in the Meta Quest Browser and press
-> **Enter VR**, or install the APK. Put your hand between the lamp and the wall.
+> **How to play:**
+> - **VR:** open https://matt869.github.io/shadowHandsVR/ in the Meta Quest Browser and press
+>   **Enter VR**, or install the APK.
+> - **No headset?** Open the same link on a laptop and press **Play with your webcam**. Your camera
+>   never leaves your device.
 >
 > This is an early release. If a shape is too hard to make with your hands, please leave a comment
 > saying which one.
 
-**Tags:** vr, webxr, hand-tracking, meta-quest, puzzle, shadows, relaxing, seated
+**Tags:** vr, webxr, hand-tracking, webcam, meta-quest, puzzle, shadows, relaxing, seated
 **Genre:** Puzzle
 
 ---
@@ -60,8 +63,8 @@ Make hand shadows on a lamp-lit wall. Match the silhouette and it comes alive. H
    - Upload `shadow_hands_web.zip` and tick **"This file will be played in the browser"**.
    - Upload `ShadowHands.apk` and tick **Android**.
 5. **Embed options:** viewport **1280 × 720**, and tick the **fullscreen button**.
-   *Note:* VR may not start inside the itch.io page frame, because itch.io controls that frame. That's
-   why the description tells players to open the GitHub link in the Quest Browser.
+   *Note:* VR and the webcam may not start inside the itch.io page frame, because itch.io controls that
+   frame's permissions. That's why the description tells players to open the GitHub link directly.
 6. **Details:** paste the description, genre and tags. Add `cover_630x500.png` as the cover, the
    `still_*.jpg` files as screenshots, and the YouTube link as the trailer.
 7. **Visibility:** *Public*, then **Save**. Send me the page link and I'll check it.

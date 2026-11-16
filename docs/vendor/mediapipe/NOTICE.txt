@@ -1,0 +1,5 @@
+MediaPipe Tasks Vision 1.2.0 (@mediapipe/tasks-vision), Copyright Google LLC, Apache License 2.0.
+  https://github.com/google-ai-edge/mediapipe   npm integrity verified at download.
+Hand Landmarker model (float16/1), Google, Apache License 2.0.
+  sha256 fbc2a30080c3c557093b5ddfc334698132eb341044ccee322ccf8bcf3607cde1
+Runs entirely in the browser; webcam frames never leave the device.
